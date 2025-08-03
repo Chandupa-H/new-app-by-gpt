@@ -19,26 +19,43 @@ export default function MobileStreamPage() {
       const ws = new WebSocket("wss://server-production-7da7.up.railway.app");
       wsRef.current = ws;
 
-      ws.onmessage = async (msg) => {
-        try {
-          const text = await msg.data.text();
-          const data = JSON.parse(text);
-          console.log("📩 Mobile received:", data);
+      // ws.onmessage = async (msg) => {
+      //   try {
+      //     const text = await msg.data.text();
+      //     const data = JSON.parse(text);
+      //     console.log("📩 Mobile received:", data);
 
-          if (data.type === "answer") {
-            await pc.setRemoteDescription(
-              new RTCSessionDescription(data.answer)
-            );
-          }
-        } catch (err) {
-          console.error("❌ Mobile failed to parse WebSocket message:", err);
+      //     if (data.type === "answer") {
+      //       await pc.setRemoteDescription(
+      //         new RTCSessionDescription(data.answer)
+      //       );
+      //     }
+      //   } catch (err) {
+      //     console.error("❌ Mobile failed to parse WebSocket message:", err);
+      //   }
+      // };
+      ws.onmessage = async (msg) => {
+        const data = JSON.parse(msg.data);
+        console.log("📩 Mobile received:", data);
+
+        if (data.type === "answer") {
+          await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+        } else if (data.type === "candidate") {
+          await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
         }
       };
 
-      ws.onopen = async () => {
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        ws.send(JSON.stringify({ type: "offer", offer }));
+      // ws.onopen = async () => {
+      //   const offer = await pc.createOffer();
+      //   await pc.setLocalDescription(offer);
+      //   ws.send(JSON.stringify({ type: "offer", offer }));
+      // };
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          ws.send(
+            JSON.stringify({ type: "candidate", candidate: event.candidate })
+          );
+        }
       };
     };
 
