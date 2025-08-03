@@ -31,7 +31,7 @@ export default function DesktopPage() {
     //     await pc.addIceCandidate(data.candidate);
     //   }
     // };
-    socket.onmessage = async (event) => {
+    ws.onmessage = async (event) => {
       try {
         const text = await event.data.text(); // Convert Blob to text
         const message = JSON.parse(text); // Now parse JSON
