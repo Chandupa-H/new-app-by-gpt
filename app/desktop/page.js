@@ -12,8 +12,10 @@ export default function DesktopPage() {
       iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
     });
     peerConnectionRef.current = pc;
+    console.log("pc", pc);
 
     const ws = new WebSocket("wss://server-production-7da7.up.railway.app");
+    console.log("ws", ws);
 
     ws.onmessage = async (event) => {
       const data = JSON.parse(event.data);
@@ -45,6 +47,7 @@ export default function DesktopPage() {
 
   return (
     <div>
+      <p>hello</p>
       <h1>Desktop Preview</h1>
       <video
         ref={remoteVideoRef}
