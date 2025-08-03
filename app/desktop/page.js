@@ -43,7 +43,7 @@ export default function DesktopPage() {
     //     console.error("❌ Failed to parse WebSocket message:", err);
     //   }
     // };
-    socket.onmessage = async (event) => {
+    ws.onmessage = async (event) => {
       const text = await event.data.text();
       const message = JSON.parse(text);
 
