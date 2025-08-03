@@ -46,6 +46,7 @@ export default function DesktopPage() {
     ws.onmessage = async (event) => {
       const text = await event.data.text();
       const message = JSON.parse(text);
+      console.log(message);
 
       if (message.type === "offer") {
         await peerConnectionRef.current.setRemoteDescription(
