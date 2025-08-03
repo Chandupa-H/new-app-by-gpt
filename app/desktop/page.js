@@ -16,7 +16,7 @@ export default function DesktopViewerPage() {
       videoRef.current.srcObject = stream;
     };
 
-    const ws = new WebSocket("ws://localhost:3001");
+    const ws = new WebSocket("wss://server-production-7da7.up.railway.app");
     wsRef.current = ws;
 
     ws.onmessage = async (msg) => {

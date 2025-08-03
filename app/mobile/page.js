@@ -16,7 +16,7 @@ export default function MobileStreamPage() {
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
       peerRef.current = pc;
 
-      const ws = new WebSocket("ws://localhost:3001");
+      const ws = new WebSocket("wss://server-production-7da7.up.railway.app");
       wsRef.current = ws;
 
       ws.onmessage = async (msg) => {
