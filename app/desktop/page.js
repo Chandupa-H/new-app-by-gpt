@@ -324,29 +324,23 @@ export default function DesktopViewPage() {
       };
 
       ws.onmessage = async (msg) => {
-        console.log("msg", msg);
+        const data =
+          typeof msg.data === "string" ? msg.data : await msg.data.text();
+        const parsed = JSON.parse(data);
+        console.log("📩 Desktop: Received message:", parsed);
 
-        try {
-          const text =
-            typeof msg.data === "string" ? msg.data : await msg.data.text();
-          const data = JSON.parse(text);
-          console.log("📩 Desktop: Received message:", data);
-
-          if (data.type === "offer") {
-            console.log("💻 Desktop: Received offer");
-            await pc.setRemoteDescription(
-              new RTCSessionDescription(data.offer)
-            );
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            ws.send(JSON.stringify({ type: "answer", answer }));
-            console.log("💻 Desktop: Sent answer");
-          } else if (data.type === "candidate") {
-            console.log("💻 Desktop: Adding ICE candidate");
-            await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-          }
-        } catch (err) {
-          console.error("💻 Desktop: Error handling message", err);
+        if (parsed.type === "offer") {
+          console.log("💻 Desktop: Received offer");
+          await pc.setRemoteDescription(
+            new RTCSessionDescription(parsed.offer)
+          );
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          ws.send(JSON.stringify({ type: "answer", answer }));
+          console.log("💻 Desktop: Sent answer");
+        } else if (parsed.type === "candidate") {
+          console.log("💻 Desktop: Adding ICE candidate");
+          await pc.addIceCandidate(new RTCIceCandidate(parsed.candidate));
         }
       };
 
