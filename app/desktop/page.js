@@ -1,3 +1,84 @@
+"use client";
+import { useEffect, useRef } from "react";
+
+export default function DesktopViewPage() {
+  const videoRef = useRef(null);
+  const peerRef = useRef(null);
+  const wsRef = useRef(null);
+
+  useEffect(() => {
+    const init = async () => {
+      console.log("💻 Desktop: Initializing...");
+
+      const pc = new RTCPeerConnection();
+      peerRef.current = pc;
+
+      // Show incoming stream
+      pc.ontrack = (event) => {
+        console.log("💻 Desktop: Received remote track");
+        videoRef.current.srcObject = event.streams[0];
+      };
+
+      // Setup WebSocket
+      const ws = new WebSocket("wss://server-production-7da7.up.railway.app");
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log("💻 Desktop: WebSocket connected ✅");
+      };
+
+      ws.onmessage = async (msg) => {
+        console.log("📩 Desktop received:", msg.data);
+        try {
+          const data = JSON.parse(msg.data);
+
+          if (data.type === "offer") {
+            console.log("💻 Desktop: Received offer");
+
+            await pc.setRemoteDescription(
+              new RTCSessionDescription(data.offer)
+            );
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+
+            console.log("💻 Desktop: Sending answer");
+            ws.send(JSON.stringify({ type: "answer", answer }));
+          } else if (data.type === "candidate") {
+            console.log("💻 Desktop: Received ICE candidate");
+            await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+          }
+        } catch (err) {
+          console.error("💻 Desktop: Failed to parse message", err);
+        }
+      };
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          console.log("💻 Desktop: Sending ICE candidate");
+          ws.send(
+            JSON.stringify({ type: "candidate", candidate: event.candidate })
+          );
+        }
+      };
+    };
+
+    init();
+  }, []);
+
+  return (
+    <div>
+      <h1>💻 Desktop Viewer</h1>
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        controls
+        style={{ width: "100%" }}
+      />
+    </div>
+  );
+}
+
 // // /app/desktop/page.jsx
 
 // "use client";
@@ -150,64 +231,64 @@
 //     </div>
 //   );
 // }
-"use client";
+// "use client";
 
-import { useEffect, useRef } from "react";
+// import { useEffect, useRef } from "react";
 
-export default function DesktopStreamViewer() {
-  const videoRef = useRef(null);
-  const peerRef = useRef(null);
-  const wsRef = useRef(null);
+// export default function DesktopStreamViewer() {
+//   const videoRef = useRef(null);
+//   const peerRef = useRef(null);
+//   const wsRef = useRef(null);
 
-  useEffect(() => {
-    const pc = new RTCPeerConnection();
-    peerRef.current = pc;
+//   useEffect(() => {
+//     const pc = new RTCPeerConnection();
+//     peerRef.current = pc;
 
-    pc.ontrack = (event) => {
-      console.log("🎥 Track received");
-      videoRef.current.srcObject = event.streams[0];
-    };
+//     pc.ontrack = (event) => {
+//       console.log("🎥 Track received");
+//       videoRef.current.srcObject = event.streams[0];
+//     };
 
-    const ws = new WebSocket("wss://server-production-7da7.up.railway.app");
-    wsRef.current = ws;
+//     const ws = new WebSocket("wss://server-production-7da7.up.railway.app");
+//     wsRef.current = ws;
 
-    ws.onmessage = async (msg) => {
-      const data = JSON.parse(msg.data);
-      console.log("📩 Desktop received:", data);
+//     ws.onmessage = async (msg) => {
+//       const data = JSON.parse(msg.data);
+//       console.log("📩 Desktop received:", data);
 
-      if (data.type === "offer") {
-        await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        ws.send(JSON.stringify({ type: "answer", answer }));
-      } else if (data.type === "candidate") {
-        try {
-          await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-        } catch (e) {
-          console.error("❌ Failed to add ICE candidate", e);
-        }
-      }
-    };
+//       if (data.type === "offer") {
+//         await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+//         const answer = await pc.createAnswer();
+//         await pc.setLocalDescription(answer);
+//         ws.send(JSON.stringify({ type: "answer", answer }));
+//       } else if (data.type === "candidate") {
+//         try {
+//           await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+//         } catch (e) {
+//           console.error("❌ Failed to add ICE candidate", e);
+//         }
+//       }
+//     };
 
-    pc.onicecandidate = (event) => {
-      if (event.candidate) {
-        ws.send(
-          JSON.stringify({ type: "candidate", candidate: event.candidate })
-        );
-      }
-    };
-  }, []);
+//     pc.onicecandidate = (event) => {
+//       if (event.candidate) {
+//         ws.send(
+//           JSON.stringify({ type: "candidate", candidate: event.candidate })
+//         );
+//       }
+//     };
+//   }, []);
 
-  return (
-    <div>
-      <h1>💻 Desktop Viewer</h1>
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        controls
-        style={{ width: "100%" }}
-      />
-    </div>
-  );
-}
+//   return (
+//     <div>
+//       <h1>💻 Desktop Viewer</h1>
+//       <video
+//         ref={videoRef}
+//         autoPlay
+//         playsInline
+//         controls
+//         style={{ width: "100%" }}
+//       />
+//     </div>
+//   );
+// }
