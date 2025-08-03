@@ -28,9 +28,11 @@ export default function DesktopViewPage() {
       };
 
       ws.onmessage = async (msg) => {
-        console.log("📩 Desktop received:", msg.data);
+        console.log("📩 Desktop received msg:", msg);
+        console.log("📩 Desktop  msg.data:", msg.data);
         try {
           const data = JSON.parse(msg.data);
+          console.log("data", data);
 
           if (data.type === "offer") {
             console.log("💻 Desktop: Received offer");
