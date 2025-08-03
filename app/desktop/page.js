@@ -324,6 +324,8 @@ export default function DesktopViewPage() {
       };
 
       ws.onmessage = async (msg) => {
+        console.log("msg", msg);
+
         try {
           const text =
             typeof msg.data === "string" ? msg.data : await msg.data.text();

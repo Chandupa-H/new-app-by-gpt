@@ -360,6 +360,39 @@ export default function MobileStreamPage() {
           console.log("📱 Mobile: Set remote description from Desktop");
         }
       };
+      // ws.onmessage = async (message) => {
+      //   console.log("📱 Mobile: Received message", message.data);
+
+      //   let jsonString;
+
+      //   if (message.data instanceof Blob) {
+      //     jsonString = await message.data.text(); // Convert Blob to string
+      //   } else {
+      //     jsonString = message.data;
+      //   }
+
+      //   let parsed;
+      //   try {
+      //     parsed = JSON.parse(jsonString);
+      //   } catch (err) {
+      //     console.error("📱 Mobile: Failed to parse message", err);
+      //     return;
+      //   }
+
+      //   if (parsed.type === "answer") {
+      //     console.log("📱 Mobile: Received answer");
+      //     await peerConnection.setRemoteDescription(
+      //       new RTCSessionDescription(parsed.answer)
+      //     );
+      //     console.log("📱 Mobile: Set remote description ✅");
+      //   } else if (parsed.type === "candidate") {
+      //     console.log("📱 Mobile: Received ICE candidate");
+      //     await peerConnection.addIceCandidate(
+      //       new RTCIceCandidate(parsed.candidate)
+      //     );
+      //     console.log("📱 Mobile: Added ICE candidate");
+      //   }
+      // };
     };
 
     init();
