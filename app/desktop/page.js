@@ -17,18 +17,30 @@ export default function DesktopPage() {
     const ws = new WebSocket("wss://server-production-7da7.up.railway.app");
     console.log("ws", ws);
 
-    ws.onmessage = async (event) => {
-      const data = JSON.parse(event.data);
+    // ws.onmessage = async (event) => {
+    //   const data = JSON.parse(event.data);
 
-      if (data.type === "offer") {
-        await pc.setRemoteDescription(new RTCSessionDescription(data));
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        ws.send(JSON.stringify(answer));
-      }
+    //   if (data.type === "offer") {
+    //     await pc.setRemoteDescription(new RTCSessionDescription(data));
+    //     const answer = await pc.createAnswer();
+    //     await pc.setLocalDescription(answer);
+    //     ws.send(JSON.stringify(answer));
+    //   }
 
-      if (data.type === "candidate") {
-        await pc.addIceCandidate(data.candidate);
+    //   if (data.type === "candidate") {
+    //     await pc.addIceCandidate(data.candidate);
+    //   }
+    // };
+    socket.onmessage = async (event) => {
+      try {
+        const text = await event.data.text(); // Convert Blob to text
+        const message = JSON.parse(text); // Now parse JSON
+        console.log("📩 Parsed message:", message);
+
+        // continue with your logic...
+        handleSignalingMessage(message);
+      } catch (err) {
+        console.error("❌ Failed to parse WebSocket message:", err);
       }
     };
 
@@ -47,7 +59,7 @@ export default function DesktopPage() {
 
   return (
     <div>
-      <p>hello</p>
+      <p>hello2</p>
       <h1>Desktop Preview</h1>
       <video
         ref={remoteVideoRef}
