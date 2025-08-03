@@ -31,16 +31,38 @@ export default function DesktopPage() {
     //     await pc.addIceCandidate(data.candidate);
     //   }
     // };
-    ws.onmessage = async (event) => {
-      try {
-        const text = await event.data.text(); // Convert Blob to text
-        const message = JSON.parse(text); // Now parse JSON
-        console.log("📩 Parsed message:", message);
+    // ws.onmessage = async (event) => {
+    //   try {
+    //     const text = await event.data.text(); // Convert Blob to text
+    //     const message = JSON.parse(text); // Now parse JSON
+    //     console.log("📩 Parsed message:", message);
 
-        // continue with your logic...
-        handleSignalingMessage(message);
-      } catch (err) {
-        console.error("❌ Failed to parse WebSocket message:", err);
+    //     // continue with your logic...
+    //     handleSignalingMessage(message);
+    //   } catch (err) {
+    //     console.error("❌ Failed to parse WebSocket message:", err);
+    //   }
+    // };
+    socket.onmessage = async (event) => {
+      const text = await event.data.text();
+      const message = JSON.parse(text);
+
+      if (message.type === "offer") {
+        await peerConnectionRef.current.setRemoteDescription(
+          new RTCSessionDescription(message.offer)
+        );
+        const answer = await peerConnectionRef.current.createAnswer();
+        await peerConnectionRef.current.setLocalDescription(answer);
+
+        socket.send(JSON.stringify({ type: "answer", answer }));
+      } else if (message.type === "answer") {
+        await peerConnectionRef.current.setRemoteDescription(
+          new RTCSessionDescription(message.answer)
+        );
+      } else if (message.type === "candidate") {
+        await peerConnectionRef.current.addIceCandidate(
+          new RTCIceCandidate(message.candidate)
+        );
       }
     };
 
