@@ -1109,283 +1109,283 @@
 //     </div>
 //   );
 // }
-// "use client";
+"use client";
 
-// import { useEffect, useRef, useState } from "react";
-// import * as bodyPix from "@tensorflow-models/body-pix";
-// import "@tensorflow/tfjs";
+import { useEffect, useRef, useState } from "react";
+import * as bodyPix from "@tensorflow-models/body-pix";
+import "@tensorflow/tfjs";
 
-// export default function DesktopViewPage() {
-//   const videoRef = useRef(null);
-//   const canvasRef = useRef(null);
-//   const peerRef = useRef(null);
-//   const wsRef = useRef(null);
-//   const mediaRecorderRef = useRef(null);
-//   const recordedChunksRef = useRef([]);
-//   const previousX = useRef(null);
+export default function DesktopViewPage() {
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const peerRef = useRef(null);
+  const wsRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const recordedChunksRef = useRef([]);
+  const previousX = useRef(null);
 
-//   const [recording, setRecording] = useState(false);
-//   const [connected, setConnected] = useState(false);
-//   const [images, setImages] = useState([]);
-//   const [videos, setVideos] = useState([]);
-//   const [direction, setDirection] = useState("Idle");
+  const [recording, setRecording] = useState(false);
+  const [connected, setConnected] = useState(false);
+  const [images, setImages] = useState([]);
+  const [videos, setVideos] = useState([]);
+  const [direction, setDirection] = useState("Idle");
 
-//   const initConnection = async () => {
-//     console.log("💻 Desktop: Initializing WebRTC");
+  const initConnection = async () => {
+    console.log("💻 Desktop: Initializing WebRTC");
 
-//     const pc = new RTCPeerConnection();
-//     peerRef.current = pc;
+    const pc = new RTCPeerConnection();
+    peerRef.current = pc;
 
-//     pc.ontrack = (event) => {
-//       console.log("💻 Received track");
-//       videoRef.current.srcObject = event.streams[0];
-//     };
+    pc.ontrack = (event) => {
+      console.log("💻 Received track");
+      videoRef.current.srcObject = event.streams[0];
+    };
 
-//     const ws = new WebSocket("wss://server-production-7da7.up.railway.app");
-//     wsRef.current = ws;
+    const ws = new WebSocket("wss://server-production-7da7.up.railway.app");
+    wsRef.current = ws;
 
-//     ws.onopen = () => {
-//       console.log("WebSocket connected ✅");
-//       setConnected(true);
-//     };
+    ws.onopen = () => {
+      console.log("WebSocket connected ✅");
+      setConnected(true);
+    };
 
-//     ws.onmessage = async (msg) => {
-//       const data =
-//         typeof msg.data === "string" ? msg.data : await msg.data.text();
-//       const parsed = JSON.parse(data);
+    ws.onmessage = async (msg) => {
+      const data =
+        typeof msg.data === "string" ? msg.data : await msg.data.text();
+      const parsed = JSON.parse(data);
 
-//       if (parsed.type === "offer") {
-//         console.log("📩 Offer received");
-//         await pc.setRemoteDescription(new RTCSessionDescription(parsed.offer));
-//         const answer = await pc.createAnswer();
-//         await pc.setLocalDescription(answer);
-//         ws.send(JSON.stringify({ type: "answer", answer }));
-//       } else if (parsed.type === "candidate") {
-//         console.log("📩 Candidate received");
-//         await pc.addIceCandidate(new RTCIceCandidate(parsed.candidate));
-//       }
-//     };
+      if (parsed.type === "offer") {
+        console.log("📩 Offer received");
+        await pc.setRemoteDescription(new RTCSessionDescription(parsed.offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        ws.send(JSON.stringify({ type: "answer", answer }));
+      } else if (parsed.type === "candidate") {
+        console.log("📩 Candidate received");
+        await pc.addIceCandidate(new RTCIceCandidate(parsed.candidate));
+      }
+    };
 
-//     pc.onicecandidate = (event) => {
-//       if (event.candidate && ws.readyState === WebSocket.OPEN) {
-//         ws.send(
-//           JSON.stringify({ type: "candidate", candidate: event.candidate })
-//         );
-//       }
-//     };
-//   };
+    pc.onicecandidate = (event) => {
+      if (event.candidate && ws.readyState === WebSocket.OPEN) {
+        ws.send(
+          JSON.stringify({ type: "candidate", candidate: event.candidate })
+        );
+      }
+    };
+  };
 
-//   useEffect(() => {
-//     fetchMedia();
-//   }, []);
+  useEffect(() => {
+    fetchMedia();
+  }, []);
 
-//   const fetchMedia = async () => {
-//     const imgRes = await fetch("/api/list-images");
-//     const vidRes = await fetch("/api/list-videos");
-//     const imgData = await imgRes.json();
-//     const vidData = await vidRes.json();
-//     setImages(imgData.files);
-//     setVideos(vidData.files);
-//   };
+  const fetchMedia = async () => {
+    const imgRes = await fetch("/api/list-images");
+    const vidRes = await fetch("/api/list-videos");
+    const imgData = await imgRes.json();
+    const vidData = await vidRes.json();
+    setImages(imgData.files);
+    setVideos(vidData.files);
+  };
 
-//   const captureImage = () => {
-//     const canvas = document.createElement("canvas");
-//     const video = videoRef.current;
-//     canvas.width = video.videoWidth;
-//     canvas.height = video.videoHeight;
-//     const ctx = canvas.getContext("2d");
-//     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-//     canvas.toBlob(async (blob) => {
-//       const formData = new FormData();
-//       formData.append("file", blob, `capture_${Date.now()}.png`);
-//       await fetch("/api/save-image", {
-//         method: "POST",
-//         body: formData,
-//       });
-//       fetchMedia();
-//     }, "image/png");
-//   };
+  const captureImage = () => {
+    const canvas = document.createElement("canvas");
+    const video = videoRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob(async (blob) => {
+      const formData = new FormData();
+      formData.append("file", blob, `capture_${Date.now()}.png`);
+      await fetch("/api/save-image", {
+        method: "POST",
+        body: formData,
+      });
+      fetchMedia();
+    }, "image/png");
+  };
 
-//   const startRecording = () => {
-//     const stream = videoRef.current.srcObject;
-//     const recorder = new MediaRecorder(stream);
-//     mediaRecorderRef.current = recorder;
-//     recordedChunksRef.current = [];
+  const startRecording = () => {
+    const stream = videoRef.current.srcObject;
+    const recorder = new MediaRecorder(stream);
+    mediaRecorderRef.current = recorder;
+    recordedChunksRef.current = [];
 
-//     recorder.ondataavailable = (event) => {
-//       if (event.data.size > 0) recordedChunksRef.current.push(event.data);
-//     };
+    recorder.ondataavailable = (event) => {
+      if (event.data.size > 0) recordedChunksRef.current.push(event.data);
+    };
 
-//     recorder.onstop = async () => {
-//       const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
-//       const formData = new FormData();
-//       formData.append("file", blob, `recording_${Date.now()}.webm`);
+    recorder.onstop = async () => {
+      const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
+      const formData = new FormData();
+      formData.append("file", blob, `recording_${Date.now()}.webm`);
 
-//       await fetch("/api/save-video", {
-//         method: "POST",
-//         body: formData,
-//       });
-//       fetchMedia();
-//     };
+      await fetch("/api/save-video", {
+        method: "POST",
+        body: formData,
+      });
+      fetchMedia();
+    };
 
-//     recorder.start();
-//     setRecording(true);
-//   };
+    recorder.start();
+    setRecording(true);
+  };
 
-//   const stopRecording = () => {
-//     mediaRecorderRef.current.stop();
-//     setRecording(false);
-//   };
+  const stopRecording = () => {
+    mediaRecorderRef.current.stop();
+    setRecording(false);
+  };
 
-//   // 🔍 Real-time tracking with bounding box
-//   useEffect(() => {
-//     let net;
-//     let intervalId;
+  // 🔍 Real-time tracking with bounding box
+  useEffect(() => {
+    let net;
+    let intervalId;
 
-//     const trackMovement = async () => {
-//       const video = videoRef.current;
-//       const canvas = canvasRef.current;
-//       if (!video || video.readyState < 2 || !canvas || !net) return;
+    const trackMovement = async () => {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      if (!video || video.readyState < 2 || !canvas || !net) return;
 
-//       // Set canvas resolution
-//       canvas.width = video.videoWidth;
-//       canvas.height = video.videoHeight;
+      // Set canvas resolution
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
 
-//       const segmentation = await net.segmentPerson(video, {
-//         flipHorizontal: false,
-//         internalResolution: "medium",
-//       });
+      const segmentation = await net.segmentPerson(video, {
+        flipHorizontal: false,
+        internalResolution: "medium",
+      });
 
-//       const mask = bodyPix.toMask(segmentation);
-//       const xCoords = [];
-//       const yCoords = [];
+      const mask = bodyPix.toMask(segmentation);
+      const xCoords = [];
+      const yCoords = [];
 
-//       for (let y = 0; y < mask.height; y++) {
-//         for (let x = 0; x < mask.width; x++) {
-//           const idx = (y * mask.width + x) * 4;
-//           if (mask.data[idx + 3] > 0) {
-//             xCoords.push(x);
-//             yCoords.push(y);
-//           }
-//         }
-//       }
+      for (let y = 0; y < mask.height; y++) {
+        for (let x = 0; x < mask.width; x++) {
+          const idx = (y * mask.width + x) * 4;
+          if (mask.data[idx + 3] > 0) {
+            xCoords.push(x);
+            yCoords.push(y);
+          }
+        }
+      }
 
-//       if (xCoords.length > 0 && yCoords.length > 0) {
-//         const currentX =
-//           xCoords.reduce((sum, x) => sum + x, 0) / xCoords.length;
+      if (xCoords.length > 0 && yCoords.length > 0) {
+        const currentX =
+          xCoords.reduce((sum, x) => sum + x, 0) / xCoords.length;
 
-//         if (previousX.current !== null) {
-//           const dx = currentX - previousX.current;
-//           if (dx > 10) setDirection("➡️ Moving Right");
-//           else if (dx < -10) setDirection("⬅️ Moving Left");
-//           else setDirection("⏹️ Centered");
-//         }
+        if (previousX.current !== null) {
+          const dx = currentX - previousX.current;
+          if (dx > 10) setDirection("➡️ Moving Right");
+          else if (dx < -10) setDirection("⬅️ Moving Left");
+          else setDirection("⏹️ Centered");
+        }
 
-//         previousX.current = currentX;
+        previousX.current = currentX;
 
-//         // Bounding box
-//         const minX = Math.min(...xCoords);
-//         const maxX = Math.max(...xCoords);
-//         const minY = Math.min(...yCoords);
-//         const maxY = Math.max(...yCoords);
+        // Bounding box
+        const minX = Math.min(...xCoords);
+        const maxX = Math.max(...xCoords);
+        const minY = Math.min(...yCoords);
+        const maxY = Math.max(...yCoords);
 
-//         const ctx = canvas.getContext("2d");
-//         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-//         const scaleX = canvas.width / mask.width;
-//         const scaleY = canvas.height / mask.height;
+        const scaleX = canvas.width / mask.width;
+        const scaleY = canvas.height / mask.height;
 
-//         ctx.strokeStyle = "lime";
-//         ctx.lineWidth = 3;
-//         ctx.strokeRect(
-//           minX * scaleX,
-//           minY * scaleY,
-//           (maxX - minX) * scaleX,
-//           (maxY - minY) * scaleY
-//         );
-//       }
-//     };
+        ctx.strokeStyle = "lime";
+        ctx.lineWidth = 3;
+        ctx.strokeRect(
+          minX * scaleX,
+          minY * scaleY,
+          (maxX - minX) * scaleX,
+          (maxY - minY) * scaleY
+        );
+      }
+    };
 
-//     const loadModelAndStart = async () => {
-//       net = await bodyPix.load();
-//       intervalId = setInterval(trackMovement, 500);
-//     };
+    const loadModelAndStart = async () => {
+      net = await bodyPix.load();
+      intervalId = setInterval(trackMovement, 500);
+    };
 
-//     loadModelAndStart();
+    loadModelAndStart();
 
-//     return () => {
-//       if (intervalId) clearInterval(intervalId);
-//     };
-//   }, []);
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, []);
 
-//   return (
-//     <div>
-//       <h1>💻 Desktop Viewer</h1>
-//       <h2>🧭 Movement: {direction}</h2>
+  return (
+    <div>
+      <h1>💻 Desktop Viewer</h1>
+      <h2>🧭 Movement: {direction}</h2>
 
-//       <div style={{ position: "relative", width: "100%" }}>
-//         <video
-//           ref={videoRef}
-//           autoPlay
-//           playsInline
-//           controls
-//           style={{ width: "100%", backgroundColor: "#000" }}
-//         />
-//         <canvas
-//           ref={canvasRef}
-//           style={{
-//             position: "absolute",
-//             top: 0,
-//             left: 0,
-//             width: "100%",
-//             height: "100%",
-//             pointerEvents: "none",
-//           }}
-//         />
-//       </div>
+      <div style={{ position: "relative", width: "100%" }}>
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          controls
+          style={{ width: "100%", backgroundColor: "#000" }}
+        />
+        <canvas
+          ref={canvasRef}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            pointerEvents: "none",
+          }}
+        />
+      </div>
 
-//       <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
-//         {!connected && (
-//           <button onClick={initConnection}>🔌 Connect to Stream</button>
-//         )}
-//         <button onClick={captureImage} disabled={!connected}>
-//           📸 Capture Image
-//         </button>
-//         {!recording ? (
-//           <button onClick={startRecording} disabled={!connected}>
-//             ⏺️ Start Recording
-//           </button>
-//         ) : (
-//           <button onClick={stopRecording}>⏹️ Stop Recording</button>
-//         )}
-//       </div>
+      <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
+        {!connected && (
+          <button onClick={initConnection}>🔌 Connect to Stream</button>
+        )}
+        <button onClick={captureImage} disabled={!connected}>
+          📸 Capture Image
+        </button>
+        {!recording ? (
+          <button onClick={startRecording} disabled={!connected}>
+            ⏺️ Start Recording
+          </button>
+        ) : (
+          <button onClick={stopRecording}>⏹️ Stop Recording</button>
+        )}
+      </div>
 
-//       <h2 style={{ marginTop: 24 }}>📷 Captured Images</h2>
-//       <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-//         {images.map((img, i) => (
-//           <img
-//             key={i}
-//             src={img}
-//             style={{ width: 200, border: "1px solid #ccc" }}
-//             alt={`Captured ${i}`}
-//           />
-//         ))}
-//       </div>
+      <h2 style={{ marginTop: 24 }}>📷 Captured Images</h2>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+        {images.map((img, i) => (
+          <img
+            key={i}
+            src={img}
+            style={{ width: 200, border: "1px solid #ccc" }}
+            alt={`Captured ${i}`}
+          />
+        ))}
+      </div>
 
-//       <h2 style={{ marginTop: 24 }}>🎥 Recorded Videos</h2>
-//       <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-//         {videos.map((vid, i) => (
-//           <video
-//             key={i}
-//             src={`/data/videos/${vid}`}
-//             controls
-//             style={{ width: 200, border: "1px solid #ccc" }}
-//           />
-//         ))}
-//       </div>
-//     </div>
-//   );
-// }
+      <h2 style={{ marginTop: 24 }}>🎥 Recorded Videos</h2>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+        {videos.map((vid, i) => (
+          <video
+            key={i}
+            src={`/data/videos/${vid}`}
+            controls
+            style={{ width: 200, border: "1px solid #ccc" }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // "use client";
 
@@ -2011,161 +2011,3 @@
 //     </div>
 //   );
 // }
-
-"use client";
-
-import { useEffect, useRef, useState } from "react";
-import * as bodyPix from "@tensorflow-models/body-pix";
-import "@tensorflow/tfjs";
-
-export default function DesktopStreamPage() {
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const wsRef = useRef(null);
-  const peerRef = useRef(null);
-  const iceQueue = useRef([]);
-  const [connected, setConnected] = useState(false);
-
-  useEffect(() => {
-    const initWebRTC = async () => {
-      console.log("🖥️ Desktop: Initializing...");
-
-      wsRef.current = new WebSocket(
-        "wss://server-production-7da7.up.railway.app"
-      );
-
-      wsRef.current.onopen = () => {
-        console.log("✅ Desktop: WebSocket connected");
-        wsRef.current.send(JSON.stringify({ type: "desktop" }));
-      };
-
-      wsRef.current.onmessage = async (message) => {
-        const data = JSON.parse(message.data);
-
-        if (data.type === "offer") {
-          console.log("📨 Received offer");
-          peerRef.current = new RTCPeerConnection({
-            iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-          });
-
-          peerRef.current.onicecandidate = (event) => {
-            if (event.candidate) {
-              wsRef.current.send(
-                JSON.stringify({ type: "ice", candidate: event.candidate })
-              );
-            }
-          };
-
-          peerRef.current.ontrack = (event) => {
-            console.log("🎥 Stream received");
-            if (videoRef.current) {
-              videoRef.current.srcObject = event.streams[0];
-              setConnected(true);
-            }
-          };
-
-          await peerRef.current.setRemoteDescription(
-            new RTCSessionDescription(data.offer)
-          );
-          const answer = await peerRef.current.createAnswer();
-          await peerRef.current.setLocalDescription(answer);
-          wsRef.current.send(JSON.stringify({ type: "answer", answer }));
-
-          iceQueue.current.forEach(async (candidate) => {
-            await peerRef.current.addIceCandidate(
-              new RTCIceCandidate(candidate)
-            );
-          });
-          iceQueue.current = [];
-        } else if (data.type === "ice" && peerRef.current) {
-          if (peerRef.current.remoteDescription) {
-            await peerRef.current.addIceCandidate(
-              new RTCIceCandidate(data.candidate)
-            );
-          } else {
-            iceQueue.current.push(data.candidate);
-          }
-        }
-      };
-    };
-
-    initWebRTC();
-  }, []);
-
-  useEffect(() => {
-    if (!connected) return;
-
-    const startTracking = async () => {
-      const net = await bodyPix.load();
-
-      const track = async () => {
-        const video = videoRef.current;
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext("2d");
-
-        if (!video || video.readyState !== 4) {
-          requestAnimationFrame(track);
-          return;
-        }
-
-        const segmentation = await net.segmentPerson(video);
-        const { data: mask, width, height } = segmentation;
-
-        let minX = width,
-          maxX = 0,
-          minY = height,
-          maxY = 0;
-
-        for (let i = 0; i < mask.length; i++) {
-          if (mask[i]) {
-            const x = i % width;
-            const y = Math.floor(i / width);
-            minX = Math.min(minX, x);
-            maxX = Math.max(maxX, x);
-            minY = Math.min(minY, y);
-            maxY = Math.max(maxY, y);
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        ctx.clearRect(0, 0, width, height);
-        ctx.strokeStyle = "red";
-        ctx.lineWidth = 2;
-        if (maxX > minX && maxY > minY) {
-          ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
-        }
-
-        requestAnimationFrame(track);
-      };
-
-      track(); // Start tracking loop
-    };
-
-    startTracking();
-  }, [connected]);
-
-  return (
-    <div style={{ position: "relative", width: "100%", height: "100vh" }}>
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
-        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-      />
-      <canvas
-        ref={canvasRef}
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          zIndex: 10,
-          pointerEvents: "none",
-          width: "100%",
-          height: "100%",
-        }}
-      />
-    </div>
-  );
-}
