@@ -9,7 +9,7 @@ export async function POST(req) {
   const buffer = Buffer.from(await file.arrayBuffer());
   const filename = `capture_${uuidv4()}.png`;
 
-  const dir = path.join(process.cwd(), "data", "images");
+  const dir = path.join(process.cwd(), "public", "data", "images");
   await writeFile(path.join(dir, filename), buffer);
 
   return NextResponse.json({ status: "success", filename });

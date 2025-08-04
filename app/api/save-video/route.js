@@ -9,7 +9,7 @@ export async function POST(req) {
   const buffer = Buffer.from(await file.arrayBuffer());
   const filename = `recording_${uuidv4()}.webm`;
 
-  const dir = path.join(process.cwd(), "data", "videos");
+  const dir = path.join(process.cwd(), "public", "data", "videos");
   await writeFile(path.join(dir, filename), buffer);
 
   return NextResponse.json({ status: "success", filename });
