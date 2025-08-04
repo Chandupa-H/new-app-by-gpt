@@ -637,11 +637,14 @@ export default function DesktopViewPage() {
           return;
         }
 
-        // Initialize face tracker
-        const tracker = new window.tracking.ObjectTracker("face");
-        tracker.setInitialScale(4);
-        tracker.setStepSize(2);
-        tracker.setEdgesDensity(0.1);
+        // Try to use color tracker as it's more reliable than object tracker
+        const tracker = new window.tracking.ColorTracker([
+          "yellow",
+          "magenta",
+          "cyan",
+        ]);
+        tracker.setMinDimension(10);
+        tracker.setMinGroupSize(30);
 
         // Start tracking
         trackingRef.current = window.tracking.track(video, tracker, {
