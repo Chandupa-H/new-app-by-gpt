@@ -1053,61 +1053,459 @@ export default function DesktopViewPage() {
       if (intervalId) clearInterval(intervalId);
     };
   }, []);
-
   return (
-    <div>
-      <h1>💻 Desktop Viewer</h1>
-      <h2>🧭 Movement: {direction}</h2>
+    <div
+      style={{
+        fontFamily: "Segoe UI, system-ui, sans-serif",
+        padding: "24px",
+        backgroundColor: "#f5f7fa",
+        minHeight: "100vh",
+        color: "#1a1a1a",
+      }}
+    >
+      {/* Header */}
+      <header style={{ textAlign: "center", marginBottom: "24px" }}>
+        <h1 style={{ fontSize: "2.5rem", margin: "0", color: "#2c3e50" }}>
+          💻 Desktop Viewer
+        </h1>
+        <p style={{ color: "#7f8c8d", fontSize: "1.1rem" }}>
+          Real-time stream with movement tracking & media capture
+        </p>
+      </header>
 
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        controls
-        style={{ width: "100%", backgroundColor: "#000" }}
-      />
+      {/* Main Content Grid */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 300px",
+          gap: "24px",
+          maxWidth: "1200px",
+          margin: "0 auto",
+        }}
+      >
+        {/* Left Side: Video & Controls */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          {/* Video */}
+          <div
+            style={{
+              borderRadius: "12px",
+              overflow: "hidden",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+              backgroundColor: "#000",
+            }}
+          >
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              style={{
+                width: "100%",
+                height: "auto",
+                display: "block",
+              }}
+            />
+          </div>
 
-      <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
-        {!connected && (
-          <button onClick={initConnection}>🔌 Connect to Stream</button>
-        )}
-        <button onClick={captureImage} disabled={!connected}>
-          📸 Capture Image
-        </button>
-        {!recording ? (
-          <button onClick={startRecording} disabled={!connected}>
-            ⏺️ Start Recording
-          </button>
-        ) : (
-          <button onClick={stopRecording}>⏹️ Stop Recording</button>
-        )}
-      </div>
+          {/* Status Badge */}
+          <div
+            style={{
+              padding: "10px 16px",
+              backgroundColor: connected ? "#d4edda" : "#f8d7da",
+              color: connected ? "#155724" : "#721c24",
+              borderRadius: "8px",
+              fontSize: "0.95rem",
+              textAlign: "center",
+              fontWeight: "500",
+            }}
+          >
+            {connected ? "🟢 Connected to Stream" : "🔴 Not Connected"}
+          </div>
 
-      <h2 style={{ marginTop: 24 }}>📷 Captured Images</h2>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-        {images.map((img, i) => (
-          <img
-            key={i}
-            src={img}
-            style={{ width: 200, border: "1px solid #ccc" }}
-            alt={`Captured ${i}`}
-          />
-        ))}
-      </div>
+          {/* Action Buttons */}
+          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+            {!connected && (
+              <button
+                onClick={initConnection}
+                style={{
+                  flex: 1,
+                  padding: "12px 16px",
+                  backgroundColor: "#007bff",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontSize: "1rem",
+                  cursor: "pointer",
+                  fontWeight: "600",
+                }}
+                onMouseOver={(e) =>
+                  (e.target.style.backgroundColor = "#0056b3")
+                }
+                onMouseOut={(e) => (e.target.style.backgroundColor = "#007bff")}
+              >
+                🔌 Connect to Stream
+              </button>
+            )}
+            <button
+              onClick={captureImage}
+              disabled={!connected}
+              style={{
+                flex: 1,
+                padding: "12px 16px",
+                backgroundColor: !connected ? "#e9ecef" : "#28a745",
+                color: !connected ? "#6c757d" : "white",
+                border: "none",
+                borderRadius: "8px",
+                fontSize: "1rem",
+                cursor: !connected ? "not-allowed" : "pointer",
+                fontWeight: "600",
+              }}
+            >
+              📸 Capture Image
+            </button>
+            {!recording ? (
+              <button
+                onClick={startRecording}
+                disabled={!connected}
+                style={{
+                  flex: 1,
+                  padding: "12px 16px",
+                  backgroundColor: !connected ? "#e9ecef" : "#ffc107",
+                  color: !connected ? "#6c757d" : "#212529",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontSize: "1rem",
+                  cursor: !connected ? "not-allowed" : "pointer",
+                  fontWeight: "600",
+                }}
+              >
+                ⏺️ Start Recording
+              </button>
+            ) : (
+              <button
+                onClick={stopRecording}
+                style={{
+                  flex: 1,
+                  padding: "12px 16px",
+                  backgroundColor: "#dc3545",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontSize: "1rem",
+                  cursor: "pointer",
+                  fontWeight: "600",
+                }}
+              >
+                ⏹️ Stop Recording
+              </button>
+            )}
+          </div>
 
-      <h2 style={{ marginTop: 24 }}>🎥 Recorded Videos</h2>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-        {videos.map((vid, i) => (
-          <video
-            key={i}
-            src={`/data/videos/${vid}`}
-            controls
-            style={{ width: 200, border: "1px solid #ccc" }}
-          />
-        ))}
+          {/* Movement Direction Indicator */}
+          <div
+            style={{
+              padding: "14px",
+              backgroundColor: "#fff",
+              borderRadius: "8px",
+              boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
+              textAlign: "center",
+              fontWeight: "bold",
+              color: direction.includes("Right")
+                ? "#007bff"
+                : direction.includes("Left")
+                ? "#e74c3c"
+                : "#27ae60",
+              fontSize: "1.1rem",
+            }}
+          >
+            🧭 Movement: <span style={{ color: "#2c3e50" }}>{direction}</span>
+          </div>
+
+          {/* 4-Way Arrow Controller */}
+          <div style={{ marginTop: "24px" }}>
+            <h3
+              style={{
+                marginBottom: "12px",
+                textAlign: "center",
+                color: "#2c3e50",
+              }}
+            >
+              🕹️ Manual Control
+            </h3>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, 1fr)",
+                gridTemplateRows: "repeat(3, 1fr)",
+                gap: "8px",
+                width: "180px",
+                height: "180px",
+                margin: "0 auto",
+              }}
+            >
+              {/* Up */}
+              <button
+                onClick={() => alert("Up")}
+                style={{
+                  gridRow: 1,
+                  gridColumn: 2,
+                  backgroundColor: "#007bff",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontSize: "1.5rem",
+                  cursor: "pointer",
+                }}
+              >
+                ▲
+              </button>
+              {/* Left */}
+              <button
+                onClick={() => alert("Left")}
+                style={{
+                  gridRow: 2,
+                  gridColumn: 1,
+                  backgroundColor: "#007bff",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontSize: "1.5rem",
+                  cursor: "pointer",
+                }}
+              >
+                ◀
+              </button>
+              {/* Center (Stop/Idle) */}
+              <button
+                onClick={() => alert("Stop")}
+                style={{
+                  gridRow: 2,
+                  gridColumn: 2,
+                  backgroundColor: "#95a5a6",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontSize: "1rem",
+                  cursor: "pointer",
+                }}
+              >
+                ⏹️
+              </button>
+              {/* Right */}
+              <button
+                onClick={() => alert("Right")}
+                style={{
+                  gridRow: 2,
+                  gridColumn: 3,
+                  backgroundColor: "#007bff",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontSize: "1.5rem",
+                  cursor: "pointer",
+                }}
+              >
+                ▶
+              </button>
+              {/* Down */}
+              <button
+                onClick={() => alert("Down")}
+                style={{
+                  gridRow: 3,
+                  gridColumn: 2,
+                  backgroundColor: "#007bff",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontSize: "1.5rem",
+                  cursor: "pointer",
+                }}
+              >
+                ▼
+              </button>
+            </div>
+            <p
+              style={{
+                textAlign: "center",
+                fontSize: "0.9rem",
+                color: "#7f8c8d",
+                marginTop: "8px",
+              }}
+            >
+              Use arrows to control remote device
+            </p>
+          </div>
+        </div>
+
+        {/* Right Side: Media Gallery */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+          {/* Images */}
+          <div>
+            <h2
+              style={{
+                fontSize: "1.4rem",
+                marginBottom: "12px",
+                color: "#2c3e50",
+                borderBottom: "2px solid #007bff",
+                paddingBottom: "6px",
+              }}
+            >
+              📷 Captured Images
+            </h2>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))",
+                gap: "10px",
+                maxHeight: "300px",
+                overflowY: "auto",
+                padding: "4px",
+                border: "1px solid #e0e0e0",
+                borderRadius: "8px",
+                backgroundColor: "#fff",
+              }}
+            >
+              {images.length > 0 ? (
+                images.map((img, i) => (
+                  <img
+                    key={i}
+                    src={img}
+                    alt={`Captured ${i}`}
+                    style={{
+                      width: "100%",
+                      height: "100px",
+                      objectFit: "cover",
+                      borderRadius: "6px",
+                      border: "1px solid #ddd",
+                    }}
+                  />
+                ))
+              ) : (
+                <p
+                  style={{
+                    fontSize: "0.9rem",
+                    color: "#7f8c8d",
+                    gridColumn: "1/-1",
+                  }}
+                >
+                  No images yet
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Videos */}
+          <div>
+            <h2
+              style={{
+                fontSize: "1.4rem",
+                marginBottom: "12px",
+                color: "#2c3e50",
+                borderBottom: "2px solid #28a745",
+                paddingBottom: "6px",
+              }}
+            >
+              🎥 Recorded Videos
+            </h2>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+                gap: "10px",
+                maxHeight: "300px",
+                overflowY: "auto",
+                padding: "4px",
+                border: "1px solid #e0e0e0",
+                borderRadius: "8px",
+                backgroundColor: "#fff",
+              }}
+            >
+              {videos.length > 0 ? (
+                videos.map((vid, i) => (
+                  <video
+                    key={i}
+                    src={`/data/videos/${vid}`}
+                    controls
+                    style={{
+                      width: "100%",
+                      height: "120px",
+                      objectFit: "cover",
+                      borderRadius: "6px",
+                      border: "1px solid #ddd",
+                    }}
+                  />
+                ))
+              ) : (
+                <p
+                  style={{
+                    fontSize: "0.9rem",
+                    color: "#7f8c8d",
+                    gridColumn: "1/-1",
+                  }}
+                >
+                  No videos yet
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
+  // return (
+  //   <div>
+  //     <h1>💻 Desktop Viewer</h1>
+  //     <h2>🧭 Movement: {direction}</h2>
+
+  //     <video
+  //       ref={videoRef}
+  //       autoPlay
+  //       playsInline
+  //       controls
+  //       style={{ width: "100%", backgroundColor: "#000" }}
+  //     />
+
+  //     <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
+  //       {!connected && (
+  //         <button onClick={initConnection}>🔌 Connect to Stream</button>
+  //       )}
+  //       <button onClick={captureImage} disabled={!connected}>
+  //         📸 Capture Image
+  //       </button>
+  //       {!recording ? (
+  //         <button onClick={startRecording} disabled={!connected}>
+  //           ⏺️ Start Recording
+  //         </button>
+  //       ) : (
+  //         <button onClick={stopRecording}>⏹️ Stop Recording</button>
+  //       )}
+  //     </div>
+
+  //     <h2 style={{ marginTop: 24 }}>📷 Captured Images</h2>
+  //     <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+  //       {images.map((img, i) => (
+  //         <img
+  //           key={i}
+  //           src={img}
+  //           style={{ width: 200, border: "1px solid #ccc" }}
+  //           alt={`Captured ${i}`}
+  //         />
+  //       ))}
+  //     </div>
+
+  //     <h2 style={{ marginTop: 24 }}>🎥 Recorded Videos</h2>
+  //     <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+  //       {videos.map((vid, i) => (
+  //         <video
+  //           key={i}
+  //           src={`/data/videos/${vid}`}
+  //           controls
+  //           style={{ width: 200, border: "1px solid #ccc" }}
+  //         />
+  //       ))}
+  //     </div>
+  //   </div>
+  // );
 }
 // "use client";
 
