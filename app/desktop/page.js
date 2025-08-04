@@ -520,7 +520,7 @@ export default function DesktopViewPage() {
         {images.map((img, i) => (
           <img
             key={i}
-            src={`/data/images/${img}`}
+            src={img}
             style={{ width: 200, border: "1px solid #ccc" }}
             alt={`Captured ${i}`}
           />
