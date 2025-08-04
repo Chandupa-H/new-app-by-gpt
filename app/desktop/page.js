@@ -1387,6 +1387,284 @@
 //   );
 // }
 
+// "use client";
+
+// import { useEffect, useRef, useState } from "react";
+// import * as bodyPix from "@tensorflow-models/body-pix";
+// import "@tensorflow/tfjs";
+
+// export default function DesktopViewPage() {
+//   const videoRef = useRef(null);
+//   const canvasRef = useRef(null);
+//   const peerRef = useRef(null);
+//   const wsRef = useRef(null);
+//   const mediaRecorderRef = useRef(null);
+//   const recordedChunksRef = useRef([]);
+//   const previousX = useRef(null);
+
+//   const [recording, setRecording] = useState(false);
+//   const [connected, setConnected] = useState(false);
+//   const [images, setImages] = useState([]);
+//   const [videos, setVideos] = useState([]);
+//   const [direction, setDirection] = useState("Idle");
+
+//   const initConnection = async () => {
+//     console.log("💻 Desktop: Initializing WebRTC");
+
+//     const pc = new RTCPeerConnection();
+//     peerRef.current = pc;
+
+//     pc.ontrack = (event) => {
+//       console.log("💻 Received track");
+//       videoRef.current.srcObject = event.streams[0];
+//     };
+
+//     const ws = new WebSocket("wss://server-production-7da7.up.railway.app");
+//     wsRef.current = ws;
+
+//     ws.onopen = () => {
+//       console.log("WebSocket connected ✅");
+//       setConnected(true);
+//     };
+
+//     ws.onmessage = async (msg) => {
+//       const data =
+//         typeof msg.data === "string" ? msg.data : await msg.data.text();
+//       const parsed = JSON.parse(data);
+
+//       if (parsed.type === "offer") {
+//         console.log("📩 Offer received");
+//         await pc.setRemoteDescription(new RTCSessionDescription(parsed.offer));
+//         const answer = await pc.createAnswer();
+//         await pc.setLocalDescription(answer);
+//         ws.send(JSON.stringify({ type: "answer", answer }));
+//       } else if (parsed.type === "candidate") {
+//         console.log("📩 Candidate received");
+//         await pc.addIceCandidate(new RTCIceCandidate(parsed.candidate));
+//       }
+//     };
+
+//     pc.onicecandidate = (event) => {
+//       if (event.candidate && ws.readyState === WebSocket.OPEN) {
+//         ws.send(
+//           JSON.stringify({ type: "candidate", candidate: event.candidate })
+//         );
+//       }
+//     };
+//   };
+
+//   useEffect(() => {
+//     fetchMedia();
+//   }, []);
+
+//   const fetchMedia = async () => {
+//     const imgRes = await fetch("/api/list-images");
+//     const vidRes = await fetch("/api/list-videos");
+//     const imgData = await imgRes.json();
+//     const vidData = await vidRes.json();
+//     setImages(imgData.files);
+//     setVideos(vidData.files);
+//   };
+
+//   const captureImage = () => {
+//     const canvas = document.createElement("canvas");
+//     const video = videoRef.current;
+//     canvas.width = video.videoWidth;
+//     canvas.height = video.videoHeight;
+//     const ctx = canvas.getContext("2d");
+//     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+//     canvas.toBlob(async (blob) => {
+//       const formData = new FormData();
+//       formData.append("file", blob, `capture_${Date.now()}.png`);
+//       await fetch("/api/save-image", {
+//         method: "POST",
+//         body: formData,
+//       });
+//       fetchMedia();
+//     }, "image/png");
+//   };
+
+//   const startRecording = () => {
+//     const stream = videoRef.current.srcObject;
+//     const recorder = new MediaRecorder(stream);
+//     mediaRecorderRef.current = recorder;
+//     recordedChunksRef.current = [];
+
+//     recorder.ondataavailable = (event) => {
+//       if (event.data.size > 0) recordedChunksRef.current.push(event.data);
+//     };
+
+//     recorder.onstop = async () => {
+//       const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
+//       const formData = new FormData();
+//       formData.append("file", blob, `recording_${Date.now()}.webm`);
+
+//       await fetch("/api/save-video", {
+//         method: "POST",
+//         body: formData,
+//       });
+//       fetchMedia();
+//     };
+
+//     recorder.start();
+//     setRecording(true);
+//   };
+
+//   const stopRecording = () => {
+//     mediaRecorderRef.current.stop();
+//     setRecording(false);
+//   };
+
+//   // 🔍 Real-time tracking with bounding box - FIXED: Added empty dependency array
+//   useEffect(() => {
+//     let net;
+//     let intervalId;
+
+//     const trackMovement = async () => {
+//       const video = videoRef.current;
+//       const canvas = canvasRef.current;
+//       if (!video || video.readyState < 2 || !canvas || !net) return;
+
+//       // Set canvas resolution
+//       canvas.width = video.videoWidth;
+//       canvas.height = video.videoHeight;
+
+//       const segmentation = await net.segmentPerson(video, {
+//         flipHorizontal: false,
+//         internalResolution: "medium",
+//       });
+
+//       const mask = bodyPix.toMask(segmentation);
+//       const xCoords = [];
+//       const yCoords = [];
+
+//       for (let y = 0; y < mask.height; y++) {
+//         for (let x = 0; x < mask.width; x++) {
+//           const idx = (y * mask.width + x) * 4;
+//           if (mask.data[idx + 3] > 0) {
+//             xCoords.push(x);
+//             yCoords.push(y);
+//           }
+//         }
+//       }
+
+//       if (xCoords.length > 0 && yCoords.length > 0) {
+//         const currentX =
+//           xCoords.reduce((sum, x) => sum + x, 0) / xCoords.length;
+
+//         if (previousX.current !== null) {
+//           const dx = currentX - previousX.current;
+//           if (dx > 10) setDirection("➡️ Moving Right");
+//           else if (dx < -10) setDirection("⬅️ Moving Left");
+//           else setDirection("⏹️ Centered");
+//         }
+
+//         previousX.current = currentX;
+
+//         // Bounding box
+//         const minX = Math.min(...xCoords);
+//         const maxX = Math.max(...xCoords);
+//         const minY = Math.min(...yCoords);
+//         const maxY = Math.max(...yCoords);
+
+//         const ctx = canvas.getContext("2d");
+//         ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+//         const scaleX = canvas.width / mask.width;
+//         const scaleY = canvas.height / mask.height;
+
+//         ctx.strokeStyle = "lime";
+//         ctx.lineWidth = 3;
+//         ctx.strokeRect(
+//           minX * scaleX,
+//           minY * scaleY,
+//           (maxX - minX) * scaleX,
+//           (maxY - minY) * scaleY
+//         );
+//       }
+//     };
+
+//     const loadModelAndStart = async () => {
+//       net = await bodyPix.load();
+//       intervalId = setInterval(trackMovement, 500);
+//     };
+
+//     loadModelAndStart();
+
+//     return () => {
+//       if (intervalId) clearInterval(intervalId);
+//     };
+//   }, []); // ← CRITICAL FIX: Added empty dependency array here
+
+//   return (
+//     <div>
+//       <h1>💻 Desktop Viewer</h1>
+//       <h2>🧭 Movement: {direction}</h2>
+
+//       <div style={{ position: "relative", width: "100%" }}>
+//         <video
+//           ref={videoRef}
+//           autoPlay
+//           playsInline
+//           controls
+//           style={{ width: "100%", backgroundColor: "#000" }}
+//         />
+//         <canvas
+//           ref={canvasRef}
+//           style={{
+//             position: "absolute",
+//             top: 0,
+//             left: 0,
+//             width: "100%",
+//             height: "100%",
+//             pointerEvents: "none",
+//           }}
+//         />
+//       </div>
+
+//       <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
+//         {!connected && (
+//           <button onClick={initConnection}>🔌 Connect to Stream</button>
+//         )}
+//         <button onClick={captureImage} disabled={!connected}>
+//           📸 Capture Image
+//         </button>
+//         {!recording ? (
+//           <button onClick={startRecording} disabled={!connected}>
+//             ⏺️ Start Recording
+//           </button>
+//         ) : (
+//           <button onClick={stopRecording}>⏹️ Stop Recording</button>
+//         )}
+//       </div>
+
+//       <h2 style={{ marginTop: 24 }}>📷 Captured Images</h2>
+//       <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+//         {images.map((img, i) => (
+//           <img
+//             key={i}
+//             src={img}
+//             style={{ width: 200, border: "1px solid #ccc" }}
+//             alt={`Captured ${i}`}
+//           />
+//         ))}
+//       </div>
+
+//       <h2 style={{ marginTop: 24 }}>🎥 Recorded Videos</h2>
+//       <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+//         {videos.map((vid, i) => (
+//           <video
+//             key={i}
+//             src={`/data/videos/${vid}`}
+//             controls
+//             style={{ width: 200, border: "1px solid #ccc" }}
+//           />
+//         ))}
+//       </div>
+//     </div>
+//   );
+// }
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -1531,24 +1809,33 @@ export default function DesktopViewPage() {
 
       const segmentation = await net.segmentPerson(video, {
         flipHorizontal: false,
-        internalResolution: "medium",
+        internalResolution: "high", // Higher resolution for better distant detection
+        segmentationThreshold: 0.5, // Lower threshold for better sensitivity
+        maxDetections: 1, // Focus on single person
+        scoreThreshold: 0.3, // Lower score threshold for distant detection
+        nmsRadius: 20,
       });
 
+      // Enhanced mask processing for better body detection
       const mask = bodyPix.toMask(segmentation);
       const xCoords = [];
       const yCoords = [];
 
+      // More aggressive pixel detection with lower alpha threshold
       for (let y = 0; y < mask.height; y++) {
         for (let x = 0; x < mask.width; x++) {
           const idx = (y * mask.width + x) * 4;
-          if (mask.data[idx + 3] > 0) {
+          // Lower threshold for detecting faint body parts
+          if (mask.data[idx + 3] > 50) {
+            // Reduced from previous implicit 255
             xCoords.push(x);
             yCoords.push(y);
           }
         }
       }
 
-      if (xCoords.length > 0 && yCoords.length > 0) {
+      // Only proceed if we have a reasonable number of pixels (full body should have more pixels)
+      if (xCoords.length > 50 && yCoords.length > 50) {
         const currentX =
           xCoords.reduce((sum, x) => sum + x, 0) / xCoords.length;
 
@@ -1561,7 +1848,7 @@ export default function DesktopViewPage() {
 
         previousX.current = currentX;
 
-        // Bounding box
+        // Enhanced bounding box with padding for better visibility
         const minX = Math.min(...xCoords);
         const maxX = Math.max(...xCoords);
         const minY = Math.min(...yCoords);
@@ -1573,20 +1860,80 @@ export default function DesktopViewPage() {
         const scaleX = canvas.width / mask.width;
         const scaleY = canvas.height / mask.height;
 
+        // Add some padding to the bounding box
+        const padding = 10;
+        const boundingX = Math.max(0, minX * scaleX - padding);
+        const boundingY = Math.max(0, minY * scaleY - padding);
+        const boundingWidth = Math.min(
+          canvas.width - boundingX,
+          (maxX - minX) * scaleX + padding * 2
+        );
+        const boundingHeight = Math.min(
+          canvas.height - boundingY,
+          (maxY - minY) * scaleY + padding * 2
+        );
+
+        // Enhanced visual styling
         ctx.strokeStyle = "lime";
         ctx.lineWidth = 3;
-        ctx.strokeRect(
-          minX * scaleX,
-          minY * scaleY,
-          (maxX - minX) * scaleX,
-          (maxY - minY) * scaleY
+        ctx.setLineDash([5, 5]); // Dashed line for better visibility
+        ctx.strokeRect(boundingX, boundingY, boundingWidth, boundingHeight);
+
+        // Add corner markers for better visibility
+        const cornerSize = 20;
+        ctx.setLineDash([]); // Solid lines for corners
+        ctx.lineWidth = 4;
+
+        // Top-left corner
+        ctx.beginPath();
+        ctx.moveTo(boundingX, boundingY + cornerSize);
+        ctx.lineTo(boundingX, boundingY);
+        ctx.lineTo(boundingX + cornerSize, boundingY);
+        ctx.stroke();
+
+        // Top-right corner
+        ctx.beginPath();
+        ctx.moveTo(boundingX + boundingWidth - cornerSize, boundingY);
+        ctx.lineTo(boundingX + boundingWidth, boundingY);
+        ctx.lineTo(boundingX + boundingWidth, boundingY + cornerSize);
+        ctx.stroke();
+
+        // Bottom-left corner
+        ctx.beginPath();
+        ctx.moveTo(boundingX, boundingY + boundingHeight - cornerSize);
+        ctx.lineTo(boundingX, boundingY + boundingHeight);
+        ctx.lineTo(boundingX + cornerSize, boundingY + boundingHeight);
+        ctx.stroke();
+
+        // Bottom-right corner
+        ctx.beginPath();
+        ctx.moveTo(
+          boundingX + boundingWidth - cornerSize,
+          boundingY + boundingHeight
         );
+        ctx.lineTo(boundingX + boundingWidth, boundingY + boundingHeight);
+        ctx.lineTo(
+          boundingX + boundingWidth,
+          boundingY + boundingHeight - cornerSize
+        );
+        ctx.stroke();
+      } else {
+        // Clear canvas if no person detected
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        setDirection("❌ No Person Detected");
       }
     };
 
     const loadModelAndStart = async () => {
-      net = await bodyPix.load();
-      intervalId = setInterval(trackMovement, 500);
+      // Load with higher accuracy model for better distant detection
+      net = await bodyPix.load({
+        architecture: "MobileNetV1",
+        outputStride: 16, // Lower output stride for better precision
+        multiplier: 1.0, // Higher multiplier for better accuracy
+        quantBytes: 4, // Higher precision
+      });
+      intervalId = setInterval(trackMovement, 300); // Faster detection
     };
 
     loadModelAndStart();
