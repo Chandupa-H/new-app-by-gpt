@@ -876,6 +876,653 @@
 //   );
 // }
 
+//
+//
+//
+//
+//
+//
+//
+//
+//
+// "use client";
+
+// import { useEffect, useRef, useState } from "react";
+// import * as bodyPix from "@tensorflow-models/body-pix";
+// import "@tensorflow/tfjs";
+
+// export default function DesktopViewPage() {
+//   const videoRef = useRef(null);
+//   const peerRef = useRef(null);
+//   const wsRef = useRef(null);
+//   const mediaRecorderRef = useRef(null);
+//   const recordedChunksRef = useRef([]);
+//   const previousX = useRef(null);
+
+//   const [recording, setRecording] = useState(false);
+//   const [connected, setConnected] = useState(false);
+//   const [images, setImages] = useState([]);
+//   const [videos, setVideos] = useState([]);
+//   const [direction, setDirection] = useState("Idle");
+
+//   const initConnection = async () => {
+//     console.log("💻 Desktop: Initializing WebRTC");
+
+//     const pc = new RTCPeerConnection();
+//     peerRef.current = pc;
+
+//     pc.ontrack = (event) => {
+//       console.log("💻 Received track");
+//       videoRef.current.srcObject = event.streams[0];
+//     };
+
+//     const ws = new WebSocket("wss://server-production-7da7.up.railway.app");
+//     wsRef.current = ws;
+
+//     ws.onopen = () => {
+//       console.log("WebSocket connected ✅");
+//       setConnected(true);
+//     };
+
+//     ws.onmessage = async (msg) => {
+//       const data =
+//         typeof msg.data === "string" ? msg.data : await msg.data.text();
+//       const parsed = JSON.parse(data);
+
+//       if (parsed.type === "offer") {
+//         console.log("📩 Offer received");
+//         await pc.setRemoteDescription(new RTCSessionDescription(parsed.offer));
+//         const answer = await pc.createAnswer();
+//         await pc.setLocalDescription(answer);
+//         ws.send(JSON.stringify({ type: "answer", answer }));
+//       } else if (parsed.type === "candidate") {
+//         console.log("📩 Candidate received");
+//         await pc.addIceCandidate(new RTCIceCandidate(parsed.candidate));
+//       }
+//     };
+
+//     pc.onicecandidate = (event) => {
+//       if (event.candidate && ws.readyState === WebSocket.OPEN) {
+//         ws.send(
+//           JSON.stringify({ type: "candidate", candidate: event.candidate })
+//         );
+//       }
+//     };
+//   };
+
+//   useEffect(() => {
+//     fetchMedia();
+//   }, []);
+
+//   const fetchMedia = async () => {
+//     const imgRes = await fetch("/api/list-images");
+//     const vidRes = await fetch("/api/list-videos");
+//     const imgData = await imgRes.json();
+//     const vidData = await vidRes.json();
+//     setImages(imgData.files);
+//     setVideos(vidData.files);
+//   };
+
+//   const captureImage = () => {
+//     const canvas = document.createElement("canvas");
+//     const video = videoRef.current;
+//     canvas.width = video.videoWidth;
+//     canvas.height = video.videoHeight;
+//     const ctx = canvas.getContext("2d");
+//     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+//     canvas.toBlob(async (blob) => {
+//       const formData = new FormData();
+//       formData.append("file", blob, `capture_${Date.now()}.png`);
+//       await fetch("/api/save-image", {
+//         method: "POST",
+//         body: formData,
+//       });
+//       fetchMedia();
+//     }, "image/png");
+//   };
+
+//   const startRecording = () => {
+//     const stream = videoRef.current.srcObject;
+//     const recorder = new MediaRecorder(stream);
+//     mediaRecorderRef.current = recorder;
+//     recordedChunksRef.current = [];
+
+//     recorder.ondataavailable = (event) => {
+//       if (event.data.size > 0) recordedChunksRef.current.push(event.data);
+//     };
+
+//     recorder.onstop = async () => {
+//       const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
+//       const formData = new FormData();
+//       formData.append("file", blob, `recording_${Date.now()}.webm`);
+
+//       await fetch("/api/save-video", {
+//         method: "POST",
+//         body: formData,
+//       });
+//       fetchMedia();
+//     };
+
+//     recorder.start();
+//     setRecording(true);
+//   };
+
+//   const stopRecording = () => {
+//     mediaRecorderRef.current.stop();
+//     setRecording(false);
+//   };
+
+//   // 🔍 Real-time tracking effect
+//   useEffect(() => {
+//     let net;
+//     let intervalId;
+
+//     const trackMovement = async () => {
+//       if (!videoRef.current || videoRef.current.readyState < 2) return;
+//       if (!net) return;
+
+//       const segmentation = await net.segmentPerson(videoRef.current, {
+//         flipHorizontal: false,
+//         internalResolution: "medium",
+//       });
+
+//       const mask = bodyPix.toMask(segmentation);
+//       const xCoords = [];
+
+//       for (let y = 0; y < mask.height; y++) {
+//         for (let x = 0; x < mask.width; x++) {
+//           const idx = (y * mask.width + x) * 4;
+//           if (mask.data[idx + 3] > 0) xCoords.push(x);
+//         }
+//       }
+
+//       if (xCoords.length > 0) {
+//         const currentX =
+//           xCoords.reduce((sum, x) => sum + x, 0) / xCoords.length;
+
+//         if (previousX.current !== null) {
+//           const dx = currentX - previousX.current;
+//           if (dx > 10) setDirection("➡️ Moving Right");
+//           else if (dx < -10) setDirection("⬅️ Moving Left");
+//           else setDirection("⏹️ Centered");
+//         }
+
+//         previousX.current = currentX;
+//       }
+//     };
+
+//     const loadModelAndStart = async () => {
+//       net = await bodyPix.load();
+//       intervalId = setInterval(trackMovement, 500);
+//     };
+
+//     loadModelAndStart();
+
+//     return () => {
+//       if (intervalId) clearInterval(intervalId);
+//     };
+//   }, []);
+//   return (
+//     <div
+//       style={{
+//         fontFamily: "Segoe UI, system-ui, sans-serif",
+//         padding: "24px",
+//         backgroundColor: "#f5f7fa",
+//         minHeight: "100vh",
+//         color: "#1a1a1a",
+//       }}
+//     >
+//       {/* Header */}
+//       <header style={{ textAlign: "center", marginBottom: "24px" }}>
+//         <h1 style={{ fontSize: "2.5rem", margin: "0", color: "#2c3e50" }}>
+//           💻 Desktop Viewer
+//         </h1>
+//         <p style={{ color: "#7f8c8d", fontSize: "1.1rem" }}>
+//           Real-time stream with movement tracking & media capture
+//         </p>
+//       </header>
+
+//       {/* Main Content Grid */}
+//       <div
+//         style={{
+//           display: "grid",
+//           gridTemplateColumns: "1fr 300px",
+//           gap: "24px",
+//           maxWidth: "1200px",
+//           margin: "0 auto",
+//         }}
+//       >
+//         {/* Left Side: Video & Controls */}
+//         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+//           {/* Video */}
+//           <div
+//             style={{
+//               borderRadius: "12px",
+//               overflow: "hidden",
+//               boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+//               backgroundColor: "#000",
+//             }}
+//           >
+//             <video
+//               ref={videoRef}
+//               autoPlay
+//               playsInline
+//               muted
+//               style={{
+//                 width: "100%",
+//                 height: "auto",
+//                 display: "block",
+//               }}
+//             />
+//           </div>
+
+//           {/* Status Badge */}
+//           <div
+//             style={{
+//               padding: "10px 16px",
+//               backgroundColor: connected ? "#d4edda" : "#f8d7da",
+//               color: connected ? "#155724" : "#721c24",
+//               borderRadius: "8px",
+//               fontSize: "0.95rem",
+//               textAlign: "center",
+//               fontWeight: "500",
+//             }}
+//           >
+//             {connected ? "🟢 Connected to Stream" : "🔴 Not Connected"}
+//           </div>
+
+//           {/* Action Buttons */}
+//           <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+//             {!connected && (
+//               <button
+//                 onClick={initConnection}
+//                 style={{
+//                   flex: 1,
+//                   padding: "12px 16px",
+//                   backgroundColor: "#007bff",
+//                   color: "white",
+//                   border: "none",
+//                   borderRadius: "8px",
+//                   fontSize: "1rem",
+//                   cursor: "pointer",
+//                   fontWeight: "600",
+//                 }}
+//                 onMouseOver={(e) =>
+//                   (e.target.style.backgroundColor = "#0056b3")
+//                 }
+//                 onMouseOut={(e) => (e.target.style.backgroundColor = "#007bff")}
+//               >
+//                 🔌 Connect to Stream
+//               </button>
+//             )}
+//             <button
+//               onClick={captureImage}
+//               disabled={!connected}
+//               style={{
+//                 flex: 1,
+//                 padding: "12px 16px",
+//                 backgroundColor: !connected ? "#e9ecef" : "#28a745",
+//                 color: !connected ? "#6c757d" : "white",
+//                 border: "none",
+//                 borderRadius: "8px",
+//                 fontSize: "1rem",
+//                 cursor: !connected ? "not-allowed" : "pointer",
+//                 fontWeight: "600",
+//               }}
+//             >
+//               📸 Capture Image
+//             </button>
+//             {!recording ? (
+//               <button
+//                 onClick={startRecording}
+//                 disabled={!connected}
+//                 style={{
+//                   flex: 1,
+//                   padding: "12px 16px",
+//                   backgroundColor: !connected ? "#e9ecef" : "#ffc107",
+//                   color: !connected ? "#6c757d" : "#212529",
+//                   border: "none",
+//                   borderRadius: "8px",
+//                   fontSize: "1rem",
+//                   cursor: !connected ? "not-allowed" : "pointer",
+//                   fontWeight: "600",
+//                 }}
+//               >
+//                 ⏺️ Start Recording
+//               </button>
+//             ) : (
+//               <button
+//                 onClick={stopRecording}
+//                 style={{
+//                   flex: 1,
+//                   padding: "12px 16px",
+//                   backgroundColor: "#dc3545",
+//                   color: "white",
+//                   border: "none",
+//                   borderRadius: "8px",
+//                   fontSize: "1rem",
+//                   cursor: "pointer",
+//                   fontWeight: "600",
+//                 }}
+//               >
+//                 ⏹️ Stop Recording
+//               </button>
+//             )}
+//           </div>
+
+//           {/* Movement Direction Indicator */}
+//           <div
+//             style={{
+//               padding: "14px",
+//               backgroundColor: "#fff",
+//               borderRadius: "8px",
+//               boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
+//               textAlign: "center",
+//               fontWeight: "bold",
+//               color: direction.includes("Right")
+//                 ? "#007bff"
+//                 : direction.includes("Left")
+//                 ? "#e74c3c"
+//                 : "#27ae60",
+//               fontSize: "1.1rem",
+//             }}
+//           >
+//             🧭 Movement: <span style={{ color: "#2c3e50" }}>{direction}</span>
+//           </div>
+
+//           {/* 4-Way Arrow Controller */}
+//           <div style={{ marginTop: "24px" }}>
+//             <h3
+//               style={{
+//                 marginBottom: "12px",
+//                 textAlign: "center",
+//                 color: "#2c3e50",
+//               }}
+//             >
+//               🕹️ Manual Control
+//             </h3>
+//             <div
+//               style={{
+//                 display: "grid",
+//                 gridTemplateColumns: "repeat(3, 1fr)",
+//                 gridTemplateRows: "repeat(3, 1fr)",
+//                 gap: "8px",
+//                 width: "180px",
+//                 height: "180px",
+//                 margin: "0 auto",
+//               }}
+//             >
+//               {/* Up */}
+//               <button
+//                 onClick={() => alert("Up")}
+//                 style={{
+//                   gridRow: 1,
+//                   gridColumn: 2,
+//                   backgroundColor: "#007bff",
+//                   color: "white",
+//                   border: "none",
+//                   borderRadius: "8px",
+//                   fontSize: "1.5rem",
+//                   cursor: "pointer",
+//                 }}
+//               >
+//                 ▲
+//               </button>
+//               {/* Left */}
+//               <button
+//                 onClick={() => alert("Left")}
+//                 style={{
+//                   gridRow: 2,
+//                   gridColumn: 1,
+//                   backgroundColor: "#007bff",
+//                   color: "white",
+//                   border: "none",
+//                   borderRadius: "8px",
+//                   fontSize: "1.5rem",
+//                   cursor: "pointer",
+//                 }}
+//               >
+//                 ◀
+//               </button>
+//               {/* Center (Stop/Idle) */}
+//               <button
+//                 onClick={() => alert("Stop")}
+//                 style={{
+//                   gridRow: 2,
+//                   gridColumn: 2,
+//                   backgroundColor: "#95a5a6",
+//                   color: "white",
+//                   border: "none",
+//                   borderRadius: "8px",
+//                   fontSize: "1rem",
+//                   cursor: "pointer",
+//                 }}
+//               >
+//                 ⏹️
+//               </button>
+//               {/* Right */}
+//               <button
+//                 onClick={() => alert("Right")}
+//                 style={{
+//                   gridRow: 2,
+//                   gridColumn: 3,
+//                   backgroundColor: "#007bff",
+//                   color: "white",
+//                   border: "none",
+//                   borderRadius: "8px",
+//                   fontSize: "1.5rem",
+//                   cursor: "pointer",
+//                 }}
+//               >
+//                 ▶
+//               </button>
+//               {/* Down */}
+//               <button
+//                 onClick={() => alert("Down")}
+//                 style={{
+//                   gridRow: 3,
+//                   gridColumn: 2,
+//                   backgroundColor: "#007bff",
+//                   color: "white",
+//                   border: "none",
+//                   borderRadius: "8px",
+//                   fontSize: "1.5rem",
+//                   cursor: "pointer",
+//                 }}
+//               >
+//                 ▼
+//               </button>
+//             </div>
+//             <p
+//               style={{
+//                 textAlign: "center",
+//                 fontSize: "0.9rem",
+//                 color: "#7f8c8d",
+//                 marginTop: "8px",
+//               }}
+//             >
+//               Use arrows to control remote device
+//             </p>
+//           </div>
+//         </div>
+
+//         {/* Right Side: Media Gallery */}
+//         <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+//           {/* Images */}
+//           <div>
+//             <h2
+//               style={{
+//                 fontSize: "1.4rem",
+//                 marginBottom: "12px",
+//                 color: "#2c3e50",
+//                 borderBottom: "2px solid #007bff",
+//                 paddingBottom: "6px",
+//               }}
+//             >
+//               📷 Captured Images
+//             </h2>
+//             <div
+//               style={{
+//                 display: "grid",
+//                 gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))",
+//                 gap: "10px",
+//                 maxHeight: "300px",
+//                 overflowY: "auto",
+//                 padding: "4px",
+//                 border: "1px solid #e0e0e0",
+//                 borderRadius: "8px",
+//                 backgroundColor: "#fff",
+//               }}
+//             >
+//               {images.length > 0 ? (
+//                 images.map((img, i) => (
+//                   <img
+//                     key={i}
+//                     src={img}
+//                     alt={`Captured ${i}`}
+//                     style={{
+//                       width: "100%",
+//                       height: "100px",
+//                       objectFit: "cover",
+//                       borderRadius: "6px",
+//                       border: "1px solid #ddd",
+//                     }}
+//                   />
+//                 ))
+//               ) : (
+//                 <p
+//                   style={{
+//                     fontSize: "0.9rem",
+//                     color: "#7f8c8d",
+//                     gridColumn: "1/-1",
+//                   }}
+//                 >
+//                   No images yet
+//                 </p>
+//               )}
+//             </div>
+//           </div>
+
+//           {/* Videos */}
+//           <div>
+//             <h2
+//               style={{
+//                 fontSize: "1.4rem",
+//                 marginBottom: "12px",
+//                 color: "#2c3e50",
+//                 borderBottom: "2px solid #28a745",
+//                 paddingBottom: "6px",
+//               }}
+//             >
+//               🎥 Recorded Videos
+//             </h2>
+//             <div
+//               style={{
+//                 display: "grid",
+//                 gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+//                 gap: "10px",
+//                 maxHeight: "300px",
+//                 overflowY: "auto",
+//                 padding: "4px",
+//                 border: "1px solid #e0e0e0",
+//                 borderRadius: "8px",
+//                 backgroundColor: "#fff",
+//               }}
+//             >
+//               {videos.length > 0 ? (
+//                 videos.map((vid, i) => (
+//                   <video
+//                     key={i}
+//                     src={`/data/videos/${vid}`}
+//                     controls
+//                     style={{
+//                       width: "100%",
+//                       height: "120px",
+//                       objectFit: "cover",
+//                       borderRadius: "6px",
+//                       border: "1px solid #ddd",
+//                     }}
+//                   />
+//                 ))
+//               ) : (
+//                 <p
+//                   style={{
+//                     fontSize: "0.9rem",
+//                     color: "#7f8c8d",
+//                     gridColumn: "1/-1",
+//                   }}
+//                 >
+//                   No videos yet
+//                 </p>
+//               )}
+//             </div>
+//           </div>
+//         </div>
+//       </div>
+//     </div>
+//   );
+//   return (
+//     <div>
+//       <h1>💻 Desktop Viewer</h1>
+//       <h2>🧭 Movement: {direction}</h2>
+
+//       <video
+//         ref={videoRef}
+//         autoPlay
+//         playsInline
+//         controls
+//         style={{ width: "100%", backgroundColor: "#000" }}
+//       />
+
+//       <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
+//         {!connected && (
+//           <button onClick={initConnection}>🔌 Connect to Stream</button>
+//         )}
+//         <button onClick={captureImage} disabled={!connected}>
+//           📸 Capture Image
+//         </button>
+//         {!recording ? (
+//           <button onClick={startRecording} disabled={!connected}>
+//             ⏺️ Start Recording
+//           </button>
+//         ) : (
+//           <button onClick={stopRecording}>⏹️ Stop Recording</button>
+//         )}
+//       </div>
+
+//       <h2 style={{ marginTop: 24 }}>📷 Captured Images</h2>
+//       <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+//         {images.map((img, i) => (
+//           <img
+//             key={i}
+//             src={img}
+//             style={{ width: 200, border: "1px solid #ccc" }}
+//             alt={`Captured ${i}`}
+//           />
+//         ))}
+//       </div>
+
+//       <h2 style={{ marginTop: 24 }}>🎥 Recorded Videos</h2>
+//       <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+//         {videos.map((vid, i) => (
+//           <video
+//             key={i}
+//             src={`/data/videos/${vid}`}
+//             controls
+//             style={{ width: 200, border: "1px solid #ccc" }}
+//           />
+//         ))}
+//       </div>
+//     </div>
+//   );
+// }
+
+//
+//
+//
+//
+//
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -1053,341 +1700,175 @@ export default function DesktopViewPage() {
       if (intervalId) clearInterval(intervalId);
     };
   }, []);
+
   return (
-    <div
-      style={{
-        fontFamily: "Segoe UI, system-ui, sans-serif",
-        padding: "24px",
-        backgroundColor: "#f5f7fa",
-        minHeight: "100vh",
-        color: "#1a1a1a",
-      }}
-    >
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 px-4 py-8 font-sans text-slate-800">
       {/* Header */}
-      <header style={{ textAlign: "center", marginBottom: "24px" }}>
-        <h1 style={{ fontSize: "2.5rem", margin: "0", color: "#2c3e50" }}>
+      <header className="text-center mb-8">
+        <h1 className="text-3xl md:text-4xl font-bold text-slate-700">
           💻 Desktop Viewer
         </h1>
-        <p style={{ color: "#7f8c8d", fontSize: "1.1rem" }}>
-          Real-time stream with movement tracking & media capture
+        <p className="text-slate-500 mt-2">
+          Real-time stream with AI tracking & media capture
         </p>
       </header>
 
-      {/* Main Content Grid */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 300px",
-          gap: "24px",
-          maxWidth: "1200px",
-          margin: "0 auto",
-        }}
-      >
-        {/* Left Side: Video & Controls */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      {/* Main Grid: Video + Controls (Left), Media (Right) */}
+      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column: Video, Controls, Controller */}
+        <div className="lg:col-span-2 space-y-6">
           {/* Video */}
-          <div
-            style={{
-              borderRadius: "12px",
-              overflow: "hidden",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-              backgroundColor: "#000",
-            }}
-          >
+          <div className="bg-black rounded-xl overflow-hidden shadow-xl">
             <video
               ref={videoRef}
               autoPlay
               playsInline
               muted
-              style={{
-                width: "100%",
-                height: "auto",
-                display: "block",
-              }}
+              className="w-full h-auto"
             />
           </div>
 
-          {/* Status Badge */}
+          {/* Connection Status */}
           <div
-            style={{
-              padding: "10px 16px",
-              backgroundColor: connected ? "#d4edda" : "#f8d7da",
-              color: connected ? "#155724" : "#721c24",
-              borderRadius: "8px",
-              fontSize: "0.95rem",
-              textAlign: "center",
-              fontWeight: "500",
-            }}
+            className={`text-center py-3 rounded-lg font-medium ${
+              connected
+                ? "bg-green-100 text-green-800"
+                : "bg-red-100 text-red-800"
+            }`}
           >
             {connected ? "🟢 Connected to Stream" : "🔴 Not Connected"}
           </div>
 
           {/* Action Buttons */}
-          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {!connected && (
               <button
                 onClick={initConnection}
-                style={{
-                  flex: 1,
-                  padding: "12px 16px",
-                  backgroundColor: "#007bff",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "8px",
-                  fontSize: "1rem",
-                  cursor: "pointer",
-                  fontWeight: "600",
-                }}
-                onMouseOver={(e) =>
-                  (e.target.style.backgroundColor = "#0056b3")
-                }
-                onMouseOut={(e) => (e.target.style.backgroundColor = "#007bff")}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition"
               >
-                🔌 Connect to Stream
+                🔌 Connect
               </button>
             )}
             <button
               onClick={captureImage}
               disabled={!connected}
-              style={{
-                flex: 1,
-                padding: "12px 16px",
-                backgroundColor: !connected ? "#e9ecef" : "#28a745",
-                color: !connected ? "#6c757d" : "white",
-                border: "none",
-                borderRadius: "8px",
-                fontSize: "1rem",
-                cursor: !connected ? "not-allowed" : "pointer",
-                fontWeight: "600",
-              }}
+              className={`font-semibold py-3 rounded-lg transition ${
+                connected
+                  ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
+              }`}
             >
-              📸 Capture Image
+              📸 Capture
             </button>
             {!recording ? (
               <button
                 onClick={startRecording}
                 disabled={!connected}
-                style={{
-                  flex: 1,
-                  padding: "12px 16px",
-                  backgroundColor: !connected ? "#e9ecef" : "#ffc107",
-                  color: !connected ? "#6c757d" : "#212529",
-                  border: "none",
-                  borderRadius: "8px",
-                  fontSize: "1rem",
-                  cursor: !connected ? "not-allowed" : "pointer",
-                  fontWeight: "600",
-                }}
+                className={`font-semibold py-3 rounded-lg transition ${
+                  connected
+                    ? "bg-amber-500 hover:bg-amber-600 text-white"
+                    : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                }`}
               >
-                ⏺️ Start Recording
+                ⏺️ Record
               </button>
             ) : (
               <button
                 onClick={stopRecording}
-                style={{
-                  flex: 1,
-                  padding: "12px 16px",
-                  backgroundColor: "#dc3545",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "8px",
-                  fontSize: "1rem",
-                  cursor: "pointer",
-                  fontWeight: "600",
-                }}
+                className="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg transition"
               >
-                ⏹️ Stop Recording
+                ⏹️ Stop
               </button>
             )}
           </div>
 
-          {/* Movement Direction Indicator */}
-          <div
-            style={{
-              padding: "14px",
-              backgroundColor: "#fff",
-              borderRadius: "8px",
-              boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
-              textAlign: "center",
-              fontWeight: "bold",
-              color: direction.includes("Right")
-                ? "#007bff"
-                : direction.includes("Left")
-                ? "#e74c3c"
-                : "#27ae60",
-              fontSize: "1.1rem",
-            }}
-          >
-            🧭 Movement: <span style={{ color: "#2c3e50" }}>{direction}</span>
+          {/* Movement Direction */}
+          <div className="bg-white p-4 rounded-lg shadow text-center font-bold text-lg border border-slate-200">
+            🧭 Movement:{" "}
+            <span
+              className={
+                direction.includes("Right")
+                  ? "text-blue-600"
+                  : direction.includes("Left")
+                  ? "text-red-600"
+                  : "text-green-600"
+              }
+            >
+              {direction}
+            </span>
           </div>
 
           {/* 4-Way Arrow Controller */}
-          <div style={{ marginTop: "24px" }}>
-            <h3
-              style={{
-                marginBottom: "12px",
-                textAlign: "center",
-                color: "#2c3e50",
-              }}
-            >
+          <div className="bg-white p-6 rounded-xl shadow text-center">
+            <h3 className="text-lg font-semibold mb-4 text-slate-700">
               🕹️ Manual Control
             </h3>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(3, 1fr)",
-                gridTemplateRows: "repeat(3, 1fr)",
-                gap: "8px",
-                width: "180px",
-                height: "180px",
-                margin: "0 auto",
-              }}
-            >
+            <div className="grid grid-cols-3 gap-2 w-40 h-40 mx-auto">
               {/* Up */}
+              <div></div>
               <button
                 onClick={() => alert("Up")}
-                style={{
-                  gridRow: 1,
-                  gridColumn: 2,
-                  backgroundColor: "#007bff",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "8px",
-                  fontSize: "1.5rem",
-                  cursor: "pointer",
-                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg transition flex items-center justify-center"
               >
                 ▲
               </button>
+              <div></div>
+
               {/* Left */}
               <button
                 onClick={() => alert("Left")}
-                style={{
-                  gridRow: 2,
-                  gridColumn: 1,
-                  backgroundColor: "#007bff",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "8px",
-                  fontSize: "1.5rem",
-                  cursor: "pointer",
-                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg transition flex items-center justify-center"
               >
                 ◀
               </button>
-              {/* Center (Stop/Idle) */}
+              {/* Center (Stop) */}
               <button
                 onClick={() => alert("Stop")}
-                style={{
-                  gridRow: 2,
-                  gridColumn: 2,
-                  backgroundColor: "#95a5a6",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "8px",
-                  fontSize: "1rem",
-                  cursor: "pointer",
-                }}
+                className="bg-gray-500 hover:bg-gray-600 text-white text-lg rounded-lg transition"
               >
                 ⏹️
               </button>
               {/* Right */}
               <button
                 onClick={() => alert("Right")}
-                style={{
-                  gridRow: 2,
-                  gridColumn: 3,
-                  backgroundColor: "#007bff",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "8px",
-                  fontSize: "1.5rem",
-                  cursor: "pointer",
-                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg transition flex items-center justify-center"
               >
                 ▶
               </button>
+
               {/* Down */}
+              <div></div>
               <button
                 onClick={() => alert("Down")}
-                style={{
-                  gridRow: 3,
-                  gridColumn: 2,
-                  backgroundColor: "#007bff",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "8px",
-                  fontSize: "1.5rem",
-                  cursor: "pointer",
-                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg transition flex items-center justify-center"
               >
                 ▼
               </button>
+              <div></div>
             </div>
-            <p
-              style={{
-                textAlign: "center",
-                fontSize: "0.9rem",
-                color: "#7f8c8d",
-                marginTop: "8px",
-              }}
-            >
-              Use arrows to control remote device
-            </p>
+            <p className="text-sm text-slate-500 mt-3">Control remote device</p>
           </div>
         </div>
 
-        {/* Right Side: Media Gallery */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+        {/* Right Column: Media Gallery */}
+        <div className="space-y-8">
           {/* Images */}
           <div>
-            <h2
-              style={{
-                fontSize: "1.4rem",
-                marginBottom: "12px",
-                color: "#2c3e50",
-                borderBottom: "2px solid #007bff",
-                paddingBottom: "6px",
-              }}
-            >
+            <h2 className="text-xl font-semibold text-slate-700 mb-3 flex items-center gap-2">
               📷 Captured Images
             </h2>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))",
-                gap: "10px",
-                maxHeight: "300px",
-                overflowY: "auto",
-                padding: "4px",
-                border: "1px solid #e0e0e0",
-                borderRadius: "8px",
-                backgroundColor: "#fff",
-              }}
-            >
+            <div className="grid grid-cols-2 sm:grid-cols-1 gap-3 max-h-64 overflow-y-auto p-1 bg-white rounded-lg border border-slate-200">
               {images.length > 0 ? (
                 images.map((img, i) => (
                   <img
                     key={i}
                     src={img}
                     alt={`Captured ${i}`}
-                    style={{
-                      width: "100%",
-                      height: "100px",
-                      objectFit: "cover",
-                      borderRadius: "6px",
-                      border: "1px solid #ddd",
-                    }}
+                    className="w-full h-20 object-cover rounded-md border"
                   />
                 ))
               ) : (
-                <p
-                  style={{
-                    fontSize: "0.9rem",
-                    color: "#7f8c8d",
-                    gridColumn: "1/-1",
-                  }}
-                >
+                <p className="text-sm text-slate-400 col-span-2 text-center py-4">
                   No images yet
                 </p>
               )}
@@ -1396,53 +1877,21 @@ export default function DesktopViewPage() {
 
           {/* Videos */}
           <div>
-            <h2
-              style={{
-                fontSize: "1.4rem",
-                marginBottom: "12px",
-                color: "#2c3e50",
-                borderBottom: "2px solid #28a745",
-                paddingBottom: "6px",
-              }}
-            >
+            <h2 className="text-xl font-semibold text-slate-700 mb-3 flex items-center gap-2">
               🎥 Recorded Videos
             </h2>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
-                gap: "10px",
-                maxHeight: "300px",
-                overflowY: "auto",
-                padding: "4px",
-                border: "1px solid #e0e0e0",
-                borderRadius: "8px",
-                backgroundColor: "#fff",
-              }}
-            >
+            <div className="grid grid-cols-2 sm:grid-cols-1 gap-3 max-h-64 overflow-y-auto p-1 bg-white rounded-lg border border-slate-200">
               {videos.length > 0 ? (
                 videos.map((vid, i) => (
                   <video
                     key={i}
                     src={`/data/videos/${vid}`}
                     controls
-                    style={{
-                      width: "100%",
-                      height: "120px",
-                      objectFit: "cover",
-                      borderRadius: "6px",
-                      border: "1px solid #ddd",
-                    }}
+                    className="w-full h-24 object-cover rounded-md border"
                   />
                 ))
               ) : (
-                <p
-                  style={{
-                    fontSize: "0.9rem",
-                    color: "#7f8c8d",
-                    gridColumn: "1/-1",
-                  }}
-                >
+                <p className="text-sm text-slate-400 col-span-2 text-center py-4">
                   No videos yet
                 </p>
               )}
@@ -1452,60 +1901,6 @@ export default function DesktopViewPage() {
       </div>
     </div>
   );
-  // return (
-  //   <div>
-  //     <h1>💻 Desktop Viewer</h1>
-  //     <h2>🧭 Movement: {direction}</h2>
-
-  //     <video
-  //       ref={videoRef}
-  //       autoPlay
-  //       playsInline
-  //       controls
-  //       style={{ width: "100%", backgroundColor: "#000" }}
-  //     />
-
-  //     <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
-  //       {!connected && (
-  //         <button onClick={initConnection}>🔌 Connect to Stream</button>
-  //       )}
-  //       <button onClick={captureImage} disabled={!connected}>
-  //         📸 Capture Image
-  //       </button>
-  //       {!recording ? (
-  //         <button onClick={startRecording} disabled={!connected}>
-  //           ⏺️ Start Recording
-  //         </button>
-  //       ) : (
-  //         <button onClick={stopRecording}>⏹️ Stop Recording</button>
-  //       )}
-  //     </div>
-
-  //     <h2 style={{ marginTop: 24 }}>📷 Captured Images</h2>
-  //     <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-  //       {images.map((img, i) => (
-  //         <img
-  //           key={i}
-  //           src={img}
-  //           style={{ width: 200, border: "1px solid #ccc" }}
-  //           alt={`Captured ${i}`}
-  //         />
-  //       ))}
-  //     </div>
-
-  //     <h2 style={{ marginTop: 24 }}>🎥 Recorded Videos</h2>
-  //     <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-  //       {videos.map((vid, i) => (
-  //         <video
-  //           key={i}
-  //           src={`/data/videos/${vid}`}
-  //           controls
-  //           style={{ width: 200, border: "1px solid #ccc" }}
-  //         />
-  //       ))}
-  //     </div>
-  //   </div>
-  // );
 }
 // "use client";
 
