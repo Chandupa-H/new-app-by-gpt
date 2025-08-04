@@ -543,7 +543,14 @@
 // }
 "use client";
 import { useEffect, useRef, useState } from "react";
-import "tracking/build/tracking-min";
+import dynamic from "next/dynamic";
+
+// Dynamically import tracking library only on client side
+const loadTracking = () => {
+  if (typeof window !== "undefined") {
+    require("tracking/build/tracking-min");
+  }
+};
 
 export default function DesktopViewPage() {
   const videoRef = useRef(null);
@@ -612,12 +619,21 @@ export default function DesktopViewPage() {
   useEffect(() => {
     const startObjectTracking = () => {
       const video = videoRef.current;
-      if (!video || !connected) return;
+      if (!video || !connected || typeof window === "undefined") return;
+
+      // Load tracking library
+      loadTracking();
 
       // Wait for video to be ready
       const checkVideoReady = () => {
         if (video.videoWidth === 0 || video.videoHeight === 0) {
           setTimeout(checkVideoReady, 100);
+          return;
+        }
+
+        // Check if tracking is available
+        if (!window.tracking) {
+          console.warn("Tracking library not loaded");
           return;
         }
 
