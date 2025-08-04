@@ -551,11 +551,14 @@ export default function DesktopViewPage() {
   const wsRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const recordedChunksRef = useRef([]);
+  const trackingRef = useRef(null);
+  const lastPositionRef = useRef({ x: null, y: null, timestamp: null });
 
   const [recording, setRecording] = useState(false);
   const [connected, setConnected] = useState(false);
   const [images, setImages] = useState([]);
   const [videos, setVideos] = useState([]);
+  const [trackingDirection, setTrackingDirection] = useState("");
 
   const initConnection = async () => {
     console.log("💻 Desktop: Initializing WebRTC");
@@ -607,42 +610,121 @@ export default function DesktopViewPage() {
   }, []);
 
   useEffect(() => {
-    let lastX = null;
-    let lastY = null;
-
-    const trackMovement = () => {
+    const startObjectTracking = () => {
       const video = videoRef.current;
-      if (!video) return;
+      if (!video || !connected) return;
 
-      const tracker = new window.tracking.ObjectTracker("face");
-      tracker.setInitialScale(4);
-      tracker.setStepSize(2);
-      tracker.setEdgesDensity(0.1);
+      // Wait for video to be ready
+      const checkVideoReady = () => {
+        if (video.videoWidth === 0 || video.videoHeight === 0) {
+          setTimeout(checkVideoReady, 100);
+          return;
+        }
 
-      window.tracking.track(video, tracker, { camera: false });
+        // Initialize face tracker
+        const tracker = new window.tracking.ObjectTracker("face");
+        tracker.setInitialScale(4);
+        tracker.setStepSize(2);
+        tracker.setEdgesDensity(0.1);
 
-      tracker.on("track", (event) => {
-        event.data.forEach((rect) => {
-          if (lastX !== null && lastY !== null) {
-            const dx = rect.x - lastX;
-            const dy = rect.y - lastY;
-
-            const horizontal =
-              Math.abs(dx) > 10 ? (dx > 0 ? "right" : "left") : "";
-            const vertical = Math.abs(dy) > 10 ? (dy > 0 ? "down" : "up") : "";
-
-            if (horizontal || vertical) {
-              console.log(`🧠 Object moving: ${horizontal} ${vertical}`);
-            }
-          }
-
-          lastX = rect.x;
-          lastY = rect.y;
+        // Start tracking
+        trackingRef.current = window.tracking.track(video, tracker, {
+          camera: false,
         });
-      });
+
+        tracker.on("track", (event) => {
+          if (event.data.length > 0) {
+            // Get the largest detected object (assuming it's the main subject)
+            const rect = event.data.reduce((largest, current) =>
+              current.width * current.height > largest.width * largest.height
+                ? current
+                : largest
+            );
+
+            const currentTime = Date.now();
+            const centerX = rect.x + rect.width / 2;
+            const centerY = rect.y + rect.height / 2;
+
+            const lastPos = lastPositionRef.current;
+
+            if (
+              lastPos.x !== null &&
+              lastPos.y !== null &&
+              lastPos.timestamp !== null
+            ) {
+              const timeDelta = currentTime - lastPos.timestamp;
+
+              // Only process if enough time has passed (avoid jittery movements)
+              if (timeDelta > 100) {
+                const deltaX = centerX - lastPos.x;
+                const deltaY = centerY - lastPos.y;
+
+                // Threshold for movement detection
+                const threshold = 15;
+
+                let direction = "";
+
+                // Determine horizontal movement
+                if (Math.abs(deltaX) > threshold) {
+                  direction += deltaX > 0 ? "Right " : "Left ";
+                }
+
+                // Determine vertical movement
+                if (Math.abs(deltaY) > threshold) {
+                  direction += deltaY > 0 ? "Down" : "Up";
+                }
+
+                if (direction.trim()) {
+                  console.log(`🧠 Object moving: ${direction.trim()}`);
+                  setTrackingDirection(direction.trim());
+
+                  // Clear direction after 1 second
+                  setTimeout(() => setTrackingDirection(""), 1000);
+                }
+
+                // Update last position
+                lastPositionRef.current = {
+                  x: centerX,
+                  y: centerY,
+                  timestamp: currentTime,
+                };
+              }
+            } else {
+              // Initialize first position
+              lastPositionRef.current = {
+                x: centerX,
+                y: centerY,
+                timestamp: currentTime,
+              };
+            }
+          } else {
+            // No objects detected, clear direction
+            setTrackingDirection("");
+          }
+        });
+      };
+
+      checkVideoReady();
     };
 
-    trackMovement();
+    if (connected && videoRef.current) {
+      // Start tracking when video is loaded
+      if (videoRef.current.readyState >= 2) {
+        startObjectTracking();
+      } else {
+        videoRef.current.addEventListener("loadeddata", startObjectTracking);
+      }
+    }
+
+    // Cleanup function
+    return () => {
+      if (trackingRef.current) {
+        trackingRef.current.stop();
+      }
+      if (videoRef.current) {
+        videoRef.current.removeEventListener("loadeddata", startObjectTracking);
+      }
+    };
   }, [connected]);
 
   const fetchMedia = async () => {
@@ -706,6 +788,22 @@ export default function DesktopViewPage() {
   return (
     <div>
       <h1>💻 Desktop Viewer</h1>
+
+      {trackingDirection && (
+        <div
+          style={{
+            backgroundColor: "#007bff",
+            color: "white",
+            padding: "8px 16px",
+            borderRadius: "4px",
+            marginBottom: "16px",
+            fontWeight: "bold",
+            textAlign: "center",
+          }}
+        >
+          🎯 Movement Detected: {trackingDirection}
+        </div>
+      )}
 
       <video
         ref={videoRef}
