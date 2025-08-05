@@ -1521,387 +1521,408 @@
 //
 //
 //
+//current one
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
 //
 
-"use client";
+// "use client";
 
-import { useEffect, useRef, useState } from "react";
-import * as bodyPix from "@tensorflow-models/body-pix";
-import "@tensorflow/tfjs";
+// import { useEffect, useRef, useState } from "react";
+// import * as bodyPix from "@tensorflow-models/body-pix";
+// import "@tensorflow/tfjs";
 
-export default function DesktopViewPage() {
-  const videoRef = useRef(null);
-  const peerRef = useRef(null);
-  const wsRef = useRef(null);
-  const mediaRecorderRef = useRef(null);
-  const recordedChunksRef = useRef([]);
-  const previousX = useRef(null);
+// export default function DesktopViewPage() {
+//   const videoRef = useRef(null);
+//   const peerRef = useRef(null);
+//   const wsRef = useRef(null);
+//   const mediaRecorderRef = useRef(null);
+//   const recordedChunksRef = useRef([]);
+//   const previousX = useRef(null);
 
-  const [recording, setRecording] = useState(false);
-  const [connected, setConnected] = useState(false);
-  const [images, setImages] = useState([]);
-  const [videos, setVideos] = useState([]);
-  const [direction, setDirection] = useState("Idle");
+//   const [recording, setRecording] = useState(false);
+//   const [connected, setConnected] = useState(false);
+//   const [images, setImages] = useState([]);
+//   const [videos, setVideos] = useState([]);
+//   const [direction, setDirection] = useState("Idle");
 
-  const initConnection = async () => {
-    console.log("💻 Desktop: Initializing WebRTC");
+//   const initConnection = async () => {
+//     console.log("💻 Desktop: Initializing WebRTC");
 
-    const pc = new RTCPeerConnection();
-    peerRef.current = pc;
+//     const pc = new RTCPeerConnection();
+//     peerRef.current = pc;
 
-    pc.ontrack = (event) => {
-      console.log("💻 Received track");
-      videoRef.current.srcObject = event.streams[0];
-    };
+//     pc.ontrack = (event) => {
+//       console.log("💻 Received track");
+//       videoRef.current.srcObject = event.streams[0];
+//     };
 
-    const ws = new WebSocket("wss://server-production-7da7.up.railway.app");
-    wsRef.current = ws;
+//     const ws = new WebSocket("wss://server-production-7da7.up.railway.app");
+//     wsRef.current = ws;
 
-    ws.onopen = () => {
-      console.log("WebSocket connected ✅");
-      setConnected(true);
-    };
+//     ws.onopen = () => {
+//       console.log("WebSocket connected ✅");
+//       setConnected(true);
+//     };
 
-    ws.onmessage = async (msg) => {
-      const data =
-        typeof msg.data === "string" ? msg.data : await msg.data.text();
-      const parsed = JSON.parse(data);
+//     ws.onmessage = async (msg) => {
+//       const data =
+//         typeof msg.data === "string" ? msg.data : await msg.data.text();
+//       const parsed = JSON.parse(data);
 
-      if (parsed.type === "offer") {
-        console.log("📩 Offer received");
-        await pc.setRemoteDescription(new RTCSessionDescription(parsed.offer));
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        ws.send(JSON.stringify({ type: "answer", answer }));
-      } else if (parsed.type === "candidate") {
-        console.log("📩 Candidate received");
-        await pc.addIceCandidate(new RTCIceCandidate(parsed.candidate));
-      }
-    };
+//       if (parsed.type === "offer") {
+//         console.log("📩 Offer received");
+//         await pc.setRemoteDescription(new RTCSessionDescription(parsed.offer));
+//         const answer = await pc.createAnswer();
+//         await pc.setLocalDescription(answer);
+//         ws.send(JSON.stringify({ type: "answer", answer }));
+//       } else if (parsed.type === "candidate") {
+//         console.log("📩 Candidate received");
+//         await pc.addIceCandidate(new RTCIceCandidate(parsed.candidate));
+//       }
+//     };
 
-    pc.onicecandidate = (event) => {
-      if (event.candidate && ws.readyState === WebSocket.OPEN) {
-        ws.send(
-          JSON.stringify({ type: "candidate", candidate: event.candidate })
-        );
-      }
-    };
-  };
+//     pc.onicecandidate = (event) => {
+//       if (event.candidate && ws.readyState === WebSocket.OPEN) {
+//         ws.send(
+//           JSON.stringify({ type: "candidate", candidate: event.candidate })
+//         );
+//       }
+//     };
+//   };
 
-  useEffect(() => {
-    fetchMedia();
-  }, []);
+//   useEffect(() => {
+//     fetchMedia();
+//   }, []);
 
-  const fetchMedia = async () => {
-    const imgRes = await fetch("/api/list-images");
-    const vidRes = await fetch("/api/list-videos");
-    const imgData = await imgRes.json();
-    const vidData = await vidRes.json();
-    setImages(imgData.files);
-    setVideos(vidData.files);
-  };
+//   const fetchMedia = async () => {
+//     const imgRes = await fetch("/api/list-images");
+//     const vidRes = await fetch("/api/list-videos");
+//     const imgData = await imgRes.json();
+//     const vidData = await vidRes.json();
+//     setImages(imgData.files);
+//     setVideos(vidData.files);
+//   };
 
-  const captureImage = () => {
-    const canvas = document.createElement("canvas");
-    const video = videoRef.current;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    canvas.toBlob(async (blob) => {
-      const formData = new FormData();
-      formData.append("file", blob, `capture_${Date.now()}.png`);
-      await fetch("/api/save-image", {
-        method: "POST",
-        body: formData,
-      });
-      fetchMedia();
-    }, "image/png");
-  };
+//   const captureImage = () => {
+//     const canvas = document.createElement("canvas");
+//     const video = videoRef.current;
+//     canvas.width = video.videoWidth;
+//     canvas.height = video.videoHeight;
+//     const ctx = canvas.getContext("2d");
+//     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+//     canvas.toBlob(async (blob) => {
+//       const formData = new FormData();
+//       formData.append("file", blob, `capture_${Date.now()}.png`);
+//       await fetch("/api/save-image", {
+//         method: "POST",
+//         body: formData,
+//       });
+//       fetchMedia();
+//     }, "image/png");
+//   };
 
-  const startRecording = () => {
-    const stream = videoRef.current.srcObject;
-    const recorder = new MediaRecorder(stream);
-    mediaRecorderRef.current = recorder;
-    recordedChunksRef.current = [];
+//   const startRecording = () => {
+//     const stream = videoRef.current.srcObject;
+//     const recorder = new MediaRecorder(stream);
+//     mediaRecorderRef.current = recorder;
+//     recordedChunksRef.current = [];
 
-    recorder.ondataavailable = (event) => {
-      if (event.data.size > 0) recordedChunksRef.current.push(event.data);
-    };
+//     recorder.ondataavailable = (event) => {
+//       if (event.data.size > 0) recordedChunksRef.current.push(event.data);
+//     };
 
-    recorder.onstop = async () => {
-      const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
-      const formData = new FormData();
-      formData.append("file", blob, `recording_${Date.now()}.webm`);
+//     recorder.onstop = async () => {
+//       const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
+//       const formData = new FormData();
+//       formData.append("file", blob, `recording_${Date.now()}.webm`);
 
-      await fetch("/api/save-video", {
-        method: "POST",
-        body: formData,
-      });
-      fetchMedia();
-    };
+//       await fetch("/api/save-video", {
+//         method: "POST",
+//         body: formData,
+//       });
+//       fetchMedia();
+//     };
 
-    recorder.start();
-    setRecording(true);
-  };
+//     recorder.start();
+//     setRecording(true);
+//   };
 
-  const stopRecording = () => {
-    mediaRecorderRef.current.stop();
-    setRecording(false);
-  };
+//   const stopRecording = () => {
+//     mediaRecorderRef.current.stop();
+//     setRecording(false);
+//   };
 
-  // 🔍 Real-time tracking effect
-  useEffect(() => {
-    let net;
-    let intervalId;
+//   // 🔍 Real-time tracking effect
+//   useEffect(() => {
+//     let net;
+//     let intervalId;
 
-    const trackMovement = async () => {
-      if (!videoRef.current || videoRef.current.readyState < 2) return;
-      if (!net) return;
+//     const trackMovement = async () => {
+//       if (!videoRef.current || videoRef.current.readyState < 2) return;
+//       if (!net) return;
 
-      const segmentation = await net.segmentPerson(videoRef.current, {
-        flipHorizontal: false,
-        internalResolution: "medium",
-      });
+//       const segmentation = await net.segmentPerson(videoRef.current, {
+//         flipHorizontal: false,
+//         internalResolution: "medium",
+//       });
 
-      const mask = bodyPix.toMask(segmentation);
-      const xCoords = [];
+//       const mask = bodyPix.toMask(segmentation);
+//       const xCoords = [];
 
-      for (let y = 0; y < mask.height; y++) {
-        for (let x = 0; x < mask.width; x++) {
-          const idx = (y * mask.width + x) * 4;
-          if (mask.data[idx + 3] > 0) xCoords.push(x);
-        }
-      }
+//       for (let y = 0; y < mask.height; y++) {
+//         for (let x = 0; x < mask.width; x++) {
+//           const idx = (y * mask.width + x) * 4;
+//           if (mask.data[idx + 3] > 0) xCoords.push(x);
+//         }
+//       }
 
-      if (xCoords.length > 0) {
-        const currentX =
-          xCoords.reduce((sum, x) => sum + x, 0) / xCoords.length;
+//       if (xCoords.length > 0) {
+//         const currentX =
+//           xCoords.reduce((sum, x) => sum + x, 0) / xCoords.length;
 
-        if (previousX.current !== null) {
-          const dx = currentX - previousX.current;
-          if (dx > 10) setDirection("➡️ Moving Right");
-          else if (dx < -10) setDirection("⬅️ Moving Left");
-          else setDirection("⏹️ Centered");
-        }
+//         if (previousX.current !== null) {
+//           const dx = currentX - previousX.current;
+//           if (dx > 10) setDirection("➡️ Moving Right");
+//           else if (dx < -10) setDirection("⬅️ Moving Left");
+//           else setDirection("⏹️ Centered");
+//         }
 
-        previousX.current = currentX;
-      }
-    };
+//         previousX.current = currentX;
+//       }
+//     };
 
-    const loadModelAndStart = async () => {
-      net = await bodyPix.load();
-      intervalId = setInterval(trackMovement, 500);
-    };
+//     const loadModelAndStart = async () => {
+//       net = await bodyPix.load();
+//       intervalId = setInterval(trackMovement, 500);
+//     };
 
-    loadModelAndStart();
+//     loadModelAndStart();
 
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, []);
+//     return () => {
+//       if (intervalId) clearInterval(intervalId);
+//     };
+//   }, []);
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 px-4 py-8 font-sans text-slate-800">
-      {/* Header */}
-      <header className="text-center mb-8">
-        <h1 className="text-3xl md:text-4xl font-bold text-slate-700">
-          💻 Desktop Viewer
-        </h1>
-        <p className="text-slate-500 mt-2">
-          Real-time stream with AI tracking & media capture
-        </p>
-      </header>
+//   return (
+//     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 px-4 py-8 font-sans text-slate-800">
+//       {/* Header */}
+//       <header className="text-center mb-8">
+//         <h1 className="text-3xl md:text-4xl font-bold text-slate-700">
+//           💻 Desktop Viewer
+//         </h1>
+//         <p className="text-slate-500 mt-2">
+//           Real-time stream with AI tracking & media capture
+//         </p>
+//       </header>
 
-      {/* Main Grid: Video + Controls (Left), Media (Right) */}
-      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Video, Controls, Controller */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Video */}
-          <div className="bg-black rounded-xl overflow-hidden shadow-xl">
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-auto"
-            />
-          </div>
+//       {/* Main Grid: Video + Controls (Left), Media (Right) */}
+//       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+//         {/* Left Column: Video, Controls, Controller */}
+//         <div className="lg:col-span-2 space-y-6">
+//           {/* Video */}
+//           <div className="bg-black rounded-xl overflow-hidden shadow-xl">
+//             <video
+//               ref={videoRef}
+//               autoPlay
+//               playsInline
+//               muted
+//               className="w-full h-auto"
+//             />
+//           </div>
 
-          {/* Connection Status */}
-          <div
-            className={`text-center py-3 rounded-lg font-medium ${
-              connected
-                ? "bg-green-100 text-green-800"
-                : "bg-red-100 text-red-800"
-            }`}
-          >
-            {connected ? "🟢 Connected to Stream" : "🔴 Not Connected"}
-          </div>
+//           {/* Connection Status */}
+//           <div
+//             className={`text-center py-3 rounded-lg font-medium ${
+//               connected
+//                 ? "bg-green-100 text-green-800"
+//                 : "bg-red-100 text-red-800"
+//             }`}
+//           >
+//             {connected ? "🟢 Connected to Stream" : "🔴 Not Connected"}
+//           </div>
 
-          {/* Action Buttons */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {!connected && (
-              <button
-                onClick={initConnection}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition"
-              >
-                🔌 Connect
-              </button>
-            )}
-            <button
-              onClick={captureImage}
-              disabled={!connected}
-              className={`font-semibold py-3 rounded-lg transition ${
-                connected
-                  ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
-              }`}
-            >
-              📸 Capture
-            </button>
-            {!recording ? (
-              <button
-                onClick={startRecording}
-                disabled={!connected}
-                className={`font-semibold py-3 rounded-lg transition ${
-                  connected
-                    ? "bg-amber-500 hover:bg-amber-600 text-white"
-                    : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                }`}
-              >
-                ⏺️ Record
-              </button>
-            ) : (
-              <button
-                onClick={stopRecording}
-                className="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg transition"
-              >
-                ⏹️ Stop
-              </button>
-            )}
-          </div>
+//           {/* Action Buttons */}
+//           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+//             {!connected && (
+//               <button
+//                 onClick={initConnection}
+//                 className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition"
+//               >
+//                 🔌 Connect
+//               </button>
+//             )}
+//             <button
+//               onClick={captureImage}
+//               disabled={!connected}
+//               className={`font-semibold py-3 rounded-lg transition ${
+//                 connected
+//                   ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+//                   : "bg-gray-200 text-gray-400 cursor-not-allowed"
+//               }`}
+//             >
+//               📸 Capture
+//             </button>
+//             {!recording ? (
+//               <button
+//                 onClick={startRecording}
+//                 disabled={!connected}
+//                 className={`font-semibold py-3 rounded-lg transition ${
+//                   connected
+//                     ? "bg-amber-500 hover:bg-amber-600 text-white"
+//                     : "bg-gray-200 text-gray-400 cursor-not-allowed"
+//                 }`}
+//               >
+//                 ⏺️ Record
+//               </button>
+//             ) : (
+//               <button
+//                 onClick={stopRecording}
+//                 className="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg transition"
+//               >
+//                 ⏹️ Stop
+//               </button>
+//             )}
+//           </div>
 
-          {/* Movement Direction */}
-          <div className="bg-white p-4 rounded-lg shadow text-center font-bold text-lg border border-slate-200">
-            🧭 Movement:{" "}
-            <span
-              className={
-                direction.includes("Right")
-                  ? "text-blue-600"
-                  : direction.includes("Left")
-                  ? "text-red-600"
-                  : "text-green-600"
-              }
-            >
-              {direction}
-            </span>
-          </div>
+//           {/* Movement Direction */}
+//           <div className="bg-white p-4 rounded-lg shadow text-center font-bold text-lg border border-slate-200">
+//             🧭 Movement:{" "}
+//             <span
+//               className={
+//                 direction.includes("Right")
+//                   ? "text-blue-600"
+//                   : direction.includes("Left")
+//                   ? "text-red-600"
+//                   : "text-green-600"
+//               }
+//             >
+//               {direction}
+//             </span>
+//           </div>
 
-          {/* 4-Way Arrow Controller */}
-          <div className="bg-white p-6 rounded-xl shadow text-center">
-            <h3 className="text-lg font-semibold mb-4 text-slate-700">
-              🕹️ Manual Control
-            </h3>
-            <div className="grid grid-cols-3 gap-2 w-40 h-40 mx-auto">
-              {/* Up */}
-              <div></div>
-              <button
-                onClick={() => alert("Up")}
-                className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg transition flex items-center justify-center"
-              >
-                ▲
-              </button>
-              <div></div>
+//           {/* 4-Way Arrow Controller */}
+//           <div className="bg-white p-6 rounded-xl shadow text-center">
+//             <h3 className="text-lg font-semibold mb-4 text-slate-700">
+//               🕹️ Manual Control
+//             </h3>
+//             <div className="grid grid-cols-3 gap-2 w-40 h-40 mx-auto">
+//               {/* Up */}
+//               <div></div>
+//               <button
+//                 onClick={() => alert("Up")}
+//                 className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg transition flex items-center justify-center"
+//               >
+//                 ▲
+//               </button>
+//               <div></div>
 
-              {/* Left */}
-              <button
-                onClick={() => alert("Left")}
-                className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg transition flex items-center justify-center"
-              >
-                ◀
-              </button>
-              {/* Center (Stop) */}
-              <button
-                onClick={() => alert("Stop")}
-                className="bg-gray-500 hover:bg-gray-600 text-white text-lg rounded-lg transition"
-              >
-                ⏹️
-              </button>
-              {/* Right */}
-              <button
-                onClick={() => alert("Right")}
-                className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg transition flex items-center justify-center"
-              >
-                ▶
-              </button>
+//               {/* Left */}
+//               <button
+//                 onClick={() => alert("Left")}
+//                 className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg transition flex items-center justify-center"
+//               >
+//                 ◀
+//               </button>
+//               {/* Center (Stop) */}
+//               <button
+//                 onClick={() => alert("Stop")}
+//                 className="bg-gray-500 hover:bg-gray-600 text-white text-lg rounded-lg transition"
+//               >
+//                 ⏹️
+//               </button>
+//               {/* Right */}
+//               <button
+//                 onClick={() => alert("Right")}
+//                 className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg transition flex items-center justify-center"
+//               >
+//                 ▶
+//               </button>
 
-              {/* Down */}
-              <div></div>
-              <button
-                onClick={() => alert("Down")}
-                className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg transition flex items-center justify-center"
-              >
-                ▼
-              </button>
-              <div></div>
-            </div>
-            <p className="text-sm text-slate-500 mt-3">Control remote device</p>
-          </div>
-        </div>
+//               {/* Down */}
+//               <div></div>
+//               <button
+//                 onClick={() => alert("Down")}
+//                 className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg transition flex items-center justify-center"
+//               >
+//                 ▼
+//               </button>
+//               <div></div>
+//             </div>
+//             <p className="text-sm text-slate-500 mt-3">Control remote device</p>
+//           </div>
+//         </div>
 
-        {/* Right Column: Media Gallery */}
-        <div className="space-y-8">
-          {/* Images */}
-          <div>
-            <h2 className="text-xl font-semibold text-slate-700 mb-3 flex items-center gap-2">
-              📷 Captured Images
-            </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-1 gap-3 max-h-64 overflow-y-auto p-1 bg-white rounded-lg border border-slate-200">
-              {images.length > 0 ? (
-                images.map((img, i) => (
-                  <img
-                    key={i}
-                    src={img}
-                    alt={`Captured ${i}`}
-                    className="w-full h-20 object-cover rounded-md border"
-                  />
-                ))
-              ) : (
-                <p className="text-sm text-slate-400 col-span-2 text-center py-4">
-                  No images yet
-                </p>
-              )}
-            </div>
-          </div>
+//         {/* Right Column: Media Gallery */}
+//         <div className="space-y-8">
+//           {/* Images */}
+//           <div>
+//             <h2 className="text-xl font-semibold text-slate-700 mb-3 flex items-center gap-2">
+//               📷 Captured Images
+//             </h2>
+//             <div className="grid grid-cols-2 sm:grid-cols-1 gap-3 max-h-64 overflow-y-auto p-1 bg-white rounded-lg border border-slate-200">
+//               {images.length > 0 ? (
+//                 images.map((img, i) => (
+//                   <img
+//                     key={i}
+//                     src={img}
+//                     alt={`Captured ${i}`}
+//                     className="w-full h-20 object-cover rounded-md border"
+//                   />
+//                 ))
+//               ) : (
+//                 <p className="text-sm text-slate-400 col-span-2 text-center py-4">
+//                   No images yet
+//                 </p>
+//               )}
+//             </div>
+//           </div>
 
-          {/* Videos */}
-          <div>
-            <h2 className="text-xl font-semibold text-slate-700 mb-3 flex items-center gap-2">
-              🎥 Recorded Videos
-            </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-1 gap-3 max-h-64 overflow-y-auto p-1 bg-white rounded-lg border border-slate-200">
-              {videos.length > 0 ? (
-                videos.map((vid, i) => (
-                  <video
-                    key={i}
-                    src={`/data/videos/${vid}`}
-                    controls
-                    className="w-full h-24 object-cover rounded-md border"
-                  />
-                ))
-              ) : (
-                <p className="text-sm text-slate-400 col-span-2 text-center py-4">
-                  No videos yet
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+//           {/* Videos */}
+//           <div>
+//             <h2 className="text-xl font-semibold text-slate-700 mb-3 flex items-center gap-2">
+//               🎥 Recorded Videos
+//             </h2>
+//             <div className="grid grid-cols-2 sm:grid-cols-1 gap-3 max-h-64 overflow-y-auto p-1 bg-white rounded-lg border border-slate-200">
+//               {videos.length > 0 ? (
+//                 videos.map((vid, i) => (
+//                   <video
+//                     key={i}
+//                     src={`/data/videos/${vid}`}
+//                     controls
+//                     className="w-full h-24 object-cover rounded-md border"
+//                   />
+//                 ))
+//               ) : (
+//                 <p className="text-sm text-slate-400 col-span-2 text-center py-4">
+//                   No videos yet
+//                 </p>
+//               )}
+//             </div>
+//           </div>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }
 // "use client";
 
 // import { useEffect, useRef, useState } from "react";
@@ -2804,3 +2825,570 @@ export default function DesktopViewPage() {
 //     </div>
 //   );
 // }
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import * as bodyPix from "@tensorflow-models/body-pix";
+import "@tensorflow/tfjs";
+
+export default function DesktopViewPage() {
+  const videoRef = useRef(null);
+  const peerRef = useRef(null);
+  const wsRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const recordedChunksRef = useRef([]);
+  const previousX = useRef(null);
+
+  const [recording, setRecording] = useState(false);
+  const [connected, setConnected] = useState(false);
+  const [images, setImages] = useState([]);
+  const [videos, setVideos] = useState([]);
+  const [direction, setDirection] = useState("Idle");
+  const [stabilizationActive, setStabilizationActive] = useState(false);
+  const [obstacleSignals, setObstacleSignals] = useState({
+    front: false,
+    back: false,
+    left: false,
+    right: false,
+  });
+  const [panValue, setPanValue] = useState(90); // Degrees
+  const [tiltValue, setTiltValue] = useState(90); // Degrees
+
+  const initConnection = async () => {
+    console.log("💻 Desktop: Initializing WebRTC");
+
+    const pc = new RTCPeerConnection();
+    peerRef.current = pc;
+
+    pc.ontrack = (event) => {
+      console.log("💻 Received track");
+      videoRef.current.srcObject = event.streams[0];
+    };
+
+    const ws = new WebSocket("wss://server-production-7da7.up.railway.app");
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      console.log("WebSocket connected ✅");
+      setConnected(true);
+    };
+
+    ws.onmessage = async (msg) => {
+      const data =
+        typeof msg.data === "string" ? msg.data : await msg.data.text();
+      const parsed = JSON.parse(data);
+
+      if (parsed.type === "offer") {
+        console.log("📩 Offer received");
+        await pc.setRemoteDescription(new RTCSessionDescription(parsed.offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        ws.send(JSON.stringify({ type: "answer", answer }));
+      } else if (parsed.type === "candidate") {
+        console.log("📩 Candidate received");
+        await pc.addIceCandidate(new RTCIceCandidate(parsed.candidate));
+      }
+    };
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate && ws.readyState === WebSocket.OPEN) {
+        ws.send(
+          JSON.stringify({ type: "candidate", candidate: event.candidate })
+        );
+      }
+    };
+  };
+
+  useEffect(() => {
+    fetchMedia();
+  }, []);
+
+  const fetchMedia = async () => {
+    const imgRes = await fetch("/api/list-images");
+    const vidRes = await fetch("/api/list-videos");
+    const imgData = await imgRes.json();
+    const vidData = await vidRes.json();
+    setImages(imgData.files);
+    setVideos(vidData.files);
+  };
+
+  const captureImage = () => {
+    const canvas = document.createElement("canvas");
+    const video = videoRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob(async (blob) => {
+      const formData = new FormData();
+      formData.append("file", blob, `capture_${Date.now()}.png`);
+      await fetch("/api/save-image", {
+        method: "POST",
+        body: formData,
+      });
+      fetchMedia();
+    }, "image/png");
+  };
+
+  const startRecording = () => {
+    const stream = videoRef.current.srcObject;
+    const recorder = new MediaRecorder(stream);
+    mediaRecorderRef.current = recorder;
+    recordedChunksRef.current = [];
+
+    recorder.ondataavailable = (event) => {
+      if (event.data.size > 0) recordedChunksRef.current.push(event.data);
+    };
+
+    recorder.onstop = async () => {
+      const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
+      const formData = new FormData();
+      formData.append("file", blob, `recording_${Date.now()}.webm`);
+
+      await fetch("/api/save-video", {
+        method: "POST",
+        body: formData,
+      });
+      fetchMedia();
+    };
+
+    recorder.start();
+    setRecording(true);
+  };
+
+  const stopRecording = () => {
+    mediaRecorderRef.current.stop();
+    setRecording(false);
+  };
+
+  // 🔍 Real-time tracking effect
+  useEffect(() => {
+    let net;
+    let intervalId;
+
+    const trackMovement = async () => {
+      if (!videoRef.current || videoRef.current.readyState < 2) return;
+      if (!net) return;
+
+      const segmentation = await net.segmentPerson(videoRef.current, {
+        flipHorizontal: false,
+        internalResolution: "medium",
+      });
+
+      const mask = bodyPix.toMask(segmentation);
+      const xCoords = [];
+
+      for (let y = 0; y < mask.height; y++) {
+        for (let x = 0; x < mask.width; x++) {
+          const idx = (y * mask.width + x) * 4;
+          if (mask.data[idx + 3] > 0) xCoords.push(x);
+        }
+      }
+
+      if (xCoords.length > 0) {
+        const currentX =
+          xCoords.reduce((sum, x) => sum + x, 0) / xCoords.length;
+
+        if (previousX.current !== null) {
+          const dx = currentX - previousX.current;
+          if (dx > 10) setDirection("➡️ Moving Right");
+          else if (dx < -10) setDirection("⬅️ Moving Left");
+          else setDirection("⏹️ Centered");
+        }
+
+        previousX.current = currentX;
+      }
+    };
+
+    const loadModelAndStart = async () => {
+      net = await bodyPix.load();
+      intervalId = setInterval(trackMovement, 500);
+    };
+
+    loadModelAndStart();
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 px-4 py-8 font-sans text-slate-800">
+      {/* Header */}
+      <header className="text-center mb-8">
+        <h1 className="text-3xl md:text-4xl font-bold text-slate-700">
+          💻 Desktop Viewer
+        </h1>
+        <p className="text-slate-500 mt-2">
+          Real-time stream with AI tracking & advanced controls
+        </p>
+      </header>
+
+      {/* Main Grid: Video + Controls (Left), Media (Right) */}
+      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column: Video, Controls, Controller */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Video */}
+          <div className="bg-black rounded-xl overflow-hidden shadow-xl">
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-auto"
+            />
+          </div>
+
+          {/* Connection Status */}
+          <div
+            className={`text-center py-3 rounded-lg font-medium ${
+              connected
+                ? "bg-green-100 text-green-800"
+                : "bg-red-100 text-red-800"
+            }`}
+          >
+            {connected ? "🟢 Connected to Stream" : "🔴 Not Connected"}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {!connected && (
+              <button
+                onClick={initConnection}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition"
+              >
+                🔌 Connect
+              </button>
+            )}
+            <button
+              onClick={captureImage}
+              disabled={!connected}
+              className={`font-semibold py-3 rounded-lg transition ${
+                connected
+                  ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
+              }`}
+            >
+              📸 Capture
+            </button>
+            {!recording ? (
+              <button
+                onClick={startRecording}
+                disabled={!connected}
+                className={`font-semibold py-3 rounded-lg transition ${
+                  connected
+                    ? "bg-amber-500 hover:bg-amber-600 text-white"
+                    : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                }`}
+              >
+                ⏺️ Record
+              </button>
+            ) : (
+              <button
+                onClick={stopRecording}
+                className="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg transition"
+              >
+                ⏹️ Stop
+              </button>
+            )}
+          </div>
+
+          {/* Movement Direction */}
+          <div className="bg-white p-4 rounded-lg shadow text-center font-bold text-lg border border-slate-200">
+            🧭 Movement:{" "}
+            <span
+              className={
+                direction.includes("Right")
+                  ? "text-blue-600"
+                  : direction.includes("Left")
+                  ? "text-red-600"
+                  : "text-green-600"
+              }
+            >
+              {direction}
+            </span>
+          </div>
+
+          {/* Omnidirectional Base */}
+          <div className="bg-white p-6 rounded-xl shadow">
+            <h3 className="text-lg font-semibold mb-4 text-slate-700">
+              Omnidirectional Base
+            </h3>
+            <div className="grid grid-cols-3 gap-2 w-40 h-40 mx-auto">
+              <button
+                onClick={() => alert("Rotate Left")}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg transition flex items-center justify-center"
+              >
+                ◀️
+              </button>
+              <button
+                onClick={() => alert("Move Forward")}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg transition flex items-center justify-center"
+              >
+                ▲
+              </button>
+              <button
+                onClick={() => alert("Rotate Right")}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg transition flex items-center justify-center"
+              >
+                ▶️
+              </button>
+              <button
+                onClick={() => alert("Move Left")}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg transition flex items-center justify-center"
+              >
+                ◀
+              </button>
+              <button
+                onClick={() => alert("Stop")}
+                className="bg-gray-500 hover:bg-gray-600 text-white text-lg rounded-lg transition"
+              >
+                ⏹️
+              </button>
+              <button
+                onClick={() => alert("Move Right")}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg transition flex items-center justify-center"
+              >
+                ▶
+              </button>
+              <button
+                onClick={() => alert("Move Backward")}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg transition flex items-center justify-center"
+              >
+                ▼
+              </button>
+            </div>
+          </div>
+
+          {/* Height Controls */}
+          <div className="bg-white p-6 rounded-xl shadow">
+            <h3 className="text-lg font-semibold mb-4 text-slate-700">
+              Height Controls
+            </h3>
+            <div className="grid grid-cols-3 gap-2">
+              {/* Motor 1 */}
+              <div>
+                <button
+                  onClick={() => alert("Motor 1 Up")}
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg transition flex items-center justify-center"
+                >
+                  ▲
+                </button>
+                <button
+                  onClick={() => alert("Motor 1 Down")}
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg transition flex items-center justify-center"
+                >
+                  ▼
+                </button>
+              </div>
+              {/* Motor 2 */}
+              <div>
+                <button
+                  onClick={() => alert("Motor 2 Up")}
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg transition flex items-center justify-center"
+                >
+                  ▲
+                </button>
+                <button
+                  onClick={() => alert("Motor 2 Down")}
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg transition flex items-center justify-center"
+                >
+                  ▼
+                </button>
+              </div>
+              {/* Motor 3 */}
+              <div>
+                <button
+                  onClick={() => alert("Motor 3 Up")}
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg transition flex items-center justify-center"
+                >
+                  ▲
+                </button>
+                <button
+                  onClick={() => alert("Motor 3 Down")}
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg transition flex items-center justify-center"
+                >
+                  ▼
+                </button>
+              </div>
+            </div>
+            {/* Combined Control */}
+            <div className="flex gap-4 mt-4">
+              <button
+                onClick={() => alert("All Up")}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-xl rounded-lg py-3 px-6 transition"
+              >
+                All Up
+              </button>
+              <button
+                onClick={() => alert("All Down")}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-xl rounded-lg py-3 px-6 transition"
+              >
+                All Down
+              </button>
+            </div>
+          </div>
+
+          {/* Stabilization */}
+          <div className="bg-white p-6 rounded-xl shadow">
+            <h3 className="text-lg font-semibold mb-4 text-slate-700">
+              Stabilization
+            </h3>
+            <div className="flex gap-4">
+              <button
+                onClick={() => setStabilizationActive(true)}
+                className="bg-green-600 hover:bg-green-700 text-white text-xl rounded-lg py-3 px-6 transition"
+              >
+                Start Stabilize
+              </button>
+              <button
+                onClick={() => setStabilizationActive(false)}
+                className="bg-red-600 hover:bg-red-700 text-white text-xl rounded-lg py-3 px-6 transition"
+              >
+                Stop Stabilize
+              </button>
+            </div>
+          </div>
+
+          {/* Pan/Tilt Control */}
+          <div className="bg-white p-6 rounded-xl shadow">
+            <h3 className="text-lg font-semibold mb-4 text-slate-700">
+              Pan/Tilt Control
+            </h3>
+            <div>
+              <label className="block mb-2">
+                <span className="text-sm font-medium">Pan</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="180"
+                  value={panValue}
+                  onChange={(e) => setPanValue(Number(e.target.value))}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                />
+              </label>
+              <label className="block mb-2 mt-4">
+                <span className="text-sm font-medium">Tilt</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="180"
+                  value={tiltValue}
+                  onChange={(e) => setTiltValue(Number(e.target.value))}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                />
+              </label>
+              <button
+                onClick={() => {
+                  setPanValue(90);
+                  setTiltValue(90);
+                }}
+                className="mt-4 bg-blue-600 hover:bg-blue-700 text-white text-xl rounded-lg py-3 px-6 transition"
+              >
+                Center
+              </button>
+            </div>
+          </div>
+
+          {/* Obstacle Detection */}
+          <div className="bg-white p-6 rounded-xl shadow">
+            <h3 className="text-lg font-semibold mb-4 text-slate-700">
+              Obstacle Detection
+            </h3>
+            <div className="grid grid-cols-4 gap-2">
+              <div
+                className={`bg-gray-800 text-white p-2 rounded-lg flex flex-col items-center justify-center ${
+                  obstacleSignals.front ? "border-green-500 border-2" : ""
+                }`}
+              >
+                <span>Front</span>
+                <span>
+                  {obstacleSignals.front ? "Signal detected" : "No signal"}
+                </span>
+              </div>
+              <div
+                className={`bg-gray-800 text-white p-2 rounded-lg flex flex-col items-center justify-center ${
+                  obstacleSignals.back ? "border-green-500 border-2" : ""
+                }`}
+              >
+                <span>Back</span>
+                <span>
+                  {obstacleSignals.back ? "Signal detected" : "No signal"}
+                </span>
+              </div>
+              <div
+                className={`bg-gray-800 text-white p-2 rounded-lg flex flex-col items-center justify-center ${
+                  obstacleSignals.left ? "border-green-500 border-2" : ""
+                }`}
+              >
+                <span>Left</span>
+                <span>
+                  {obstacleSignals.left ? "Signal detected" : "No signal"}
+                </span>
+              </div>
+              <div
+                className={`bg-gray-800 text-white p-2 rounded-lg flex flex-col items-center justify-center ${
+                  obstacleSignals.right ? "border-green-500 border-2" : ""
+                }`}
+              >
+                <span>Right</span>
+                <span>
+                  {obstacleSignals.right ? "Signal detected" : "No signal"}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Media Gallery */}
+        <div className="space-y-8">
+          {/* Images */}
+          <div>
+            <h2 className="text-xl font-semibold text-slate-700 mb-3 flex items-center gap-2">
+              📷 Captured Images
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-1 gap-3 max-h-64 overflow-y-auto p-1 bg-white rounded-lg border border-slate-200">
+              {images.length > 0 ? (
+                images.map((img, i) => (
+                  <img
+                    key={i}
+                    src={img}
+                    alt={`Captured ${i}`}
+                    className="w-full h-20 object-cover rounded-md border"
+                  />
+                ))
+              ) : (
+                <p className="text-sm text-slate-400 col-span-2 text-center py-4">
+                  No images yet
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Videos */}
+          <div>
+            <h2 className="text-xl font-semibold text-slate-700 mb-3 flex items-center gap-2">
+              🎥 Recorded Videos
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-1 gap-3 max-h-64 overflow-y-auto p-1 bg-white rounded-lg border border-slate-200">
+              {videos.length > 0 ? (
+                videos.map((vid, i) => (
+                  <video
+                    key={i}
+                    src={`/data/videos/${vid}`}
+                    controls
+                    className="w-full h-24 object-cover rounded-md border"
+                  />
+                ))
+              ) : (
+                <p className="text-sm text-slate-400 col-span-2 text-center py-4">
+                  No videos yet
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
