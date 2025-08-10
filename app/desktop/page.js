@@ -694,7 +694,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as bodyPix from "@tensorflow-models/body-pix";
 import "@tensorflow/tfjs";
-// import { sendMotorCommand } from "@/services/esp32Api"; // Import our JS API
 import { sendMotorCommand } from "@/src/services/esp32Api";
 
 export default function DesktopViewPage() {
@@ -854,6 +853,7 @@ export default function DesktopViewPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-5">
+          {/* Left Column: Video & Capture Controls */}
           <div className="md:col-span-1 space-y-4">
             <div
               className={`text-center py-2 rounded-lg text-sm font-medium ${
@@ -921,8 +921,9 @@ export default function DesktopViewPage() {
             </div>
           </div>
 
-          {/* Omnidirectional Base */}
+          {/* Right Column: All Controls */}
           <div className="md:col-span-2 space-y-5">
+            {/* Omnidirectional Base */}
             <div className="bg-slate-50 p-4 rounded-xl border">
               <h3 className="text-center font-semibold text-slate-700 mb-3">
                 🔄 Omnidirectional Base
@@ -975,7 +976,159 @@ export default function DesktopViewPage() {
               </div>
             </div>
 
-            {/* Rest of your controls remain unchanged... */}
+            {/* Height Controls */}
+            <div className="bg-slate-50 p-4 rounded-xl border">
+              <h3 className="text-center font-semibold text-slate-700 mb-3">
+                📏 Height Control (Motors)
+              </h3>
+              <div className="grid grid-cols-4 gap-3 text-center">
+                {["M1", "M2", "M3"].map((motor, i) => (
+                  <div key={motor}>
+                    <div className="font-medium text-slate-700">{motor}</div>
+                    <button
+                      onClick={() =>
+                        sendMotorCommand(`${motor.toLowerCase()}Up`)
+                      }
+                      className="w-full bg-blue-600 text-white text-lg rounded py-2 mt-1"
+                    >
+                      ▲
+                    </button>
+                    <button
+                      onClick={() =>
+                        sendMotorCommand(`${motor.toLowerCase()}Down`)
+                      }
+                      className="w-full bg-blue-600 text-white text-lg rounded py-2 mt-1"
+                    >
+                      ▼
+                    </button>
+                  </div>
+                ))}
+                <div className="space-y-2">
+                  <button
+                    onClick={() => sendMotorCommand("allUp")}
+                    className="w-full bg-green-600 text-white text-sm py-2 rounded"
+                  >
+                    All Up
+                  </button>
+                  <button
+                    onClick={() => sendMotorCommand("allDown")}
+                    className="w-full bg-red-600 text-white text-sm py-2 rounded"
+                  >
+                    All Down
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Stabilization */}
+            <div className="bg-slate-50 p-4 rounded-xl border">
+              <h3 className="text-center font-semibold text-slate-700 mb-3">
+                ⚖️ Stabilization
+              </h3>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => {
+                    setStabilizationActive(true);
+                    sendMotorCommand("startStabilize");
+                  }}
+                  className={`flex-1 py-3 rounded font-medium text-white transition ${
+                    stabilizationActive
+                      ? "bg-green-600"
+                      : "bg-gray-400 hover:bg-gray-500"
+                  }`}
+                >
+                  Start Stabilize
+                </button>
+                <button
+                  onClick={() => {
+                    setStabilizationActive(false);
+                    sendMotorCommand("stopStabilize");
+                  }}
+                  className={`flex-1 py-3 rounded font-medium text-white transition ${
+                    !stabilizationActive
+                      ? "bg-red-600"
+                      : "bg-gray-400 hover:bg-gray-500"
+                  }`}
+                >
+                  Stop Stabilize
+                </button>
+              </div>
+            </div>
+
+            {/* Pan/Tilt */}
+            <div className="bg-slate-50 p-4 rounded-xl border">
+              <h3 className="text-center font-semibold text-slate-700 mb-3">
+                🔄 Pan / Tilt
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">
+                    Pan ({panValue}°)
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="180"
+                    value={panValue}
+                    onChange={(e) => {
+                      const value = Number(e.target.value);
+                      setPanValue(value);
+                      sendMotorCommand(`pan:${value}`);
+                    }}
+                    className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">
+                    Tilt ({tiltValue}°)
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="180"
+                    value={tiltValue}
+                    onChange={(e) => {
+                      const value = Number(e.target.value);
+                      setTiltValue(value);
+                      sendMotorCommand(`tilt:${value}`);
+                    }}
+                    className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    setPanValue(90);
+                    setTiltValue(90);
+                    sendMotorCommand("centerServos");
+                  }}
+                  className="w-full bg-blue-600 text-white py-2 rounded font-medium"
+                >
+                  Center
+                </button>
+              </div>
+            </div>
+
+            {/* Obstacle Detection */}
+            <div className="bg-slate-50 p-4 rounded-xl border">
+              <h3 className="text-center font-semibold text-slate-700 mb-3">
+                🚨 Obstacle Detection
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {Object.entries(obstacleSignals).map(([dir, active]) => (
+                  <div
+                    key={dir}
+                    className={`p-3 rounded-lg text-center font-medium text-white ${
+                      active ? "bg-green-600" : "bg-gray-500"
+                    }`}
+                  >
+                    {dir.charAt(0).toUpperCase() + dir.slice(1)}
+                    <div className="text-xs mt-1">
+                      {active ? "Detected" : "Clear"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
