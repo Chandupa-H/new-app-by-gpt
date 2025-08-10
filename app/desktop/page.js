@@ -694,7 +694,8 @@
 import { useEffect, useRef, useState } from "react";
 import * as bodyPix from "@tensorflow-models/body-pix";
 import "@tensorflow/tfjs";
-import { sendMotorCommand } from "@/services/esp32Api"; // Import our JS API
+// import { sendMotorCommand } from "@/services/esp32Api"; // Import our JS API
+import { sendMotorCommand } from "@/src/services/esp32Api";
 
 export default function DesktopViewPage() {
   const videoRef = useRef(null);
