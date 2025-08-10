@@ -469,7 +469,7 @@
 //               )}
 //             </div>
 
-//             {/* Media Gallery (Mini) */}
+// //             {/* Media Gallery (Mini) */}
 //             <div>
 //               <h3 className="text-sm font-semibold mb-2 text-center">
 //                 📷 Media
@@ -491,7 +491,7 @@
 //                   />
 //                 ))}
 //               </div>
-//             </div>
+// //             </div>
 //           </div>
 
 //           {/* Column 2: Controls (Stacked on mobile, side-by-side on desktop) */}
@@ -1974,6 +1974,28 @@ export default function DesktopViewPage() {
                   </button>
                 </>
               )}
+            </div>
+          </div>
+
+          {/* Media Gallery (Mini) */}
+          <div>
+            <h3 className="text-sm font-semibold mb-2 text-center">📷 Media</h3>
+            <div className="flex gap-1 overflow-x-auto py-1 max-w-full">
+              {images.slice(-4).map((img, i) => (
+                <img
+                  key={i}
+                  src={img}
+                  alt="img"
+                  className="w-16 h-16 object-cover rounded border flex-shrink-0"
+                />
+              ))}
+              {videos.slice(-4).map((vid, i) => (
+                <video
+                  key={i}
+                  src={`/data/videos/${vid}`}
+                  className="w-16 h-16 object-cover rounded border flex-shrink-0"
+                />
+              ))}
             </div>
           </div>
 
