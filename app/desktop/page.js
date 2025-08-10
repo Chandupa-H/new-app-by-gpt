@@ -1799,8 +1799,13 @@ export default function DesktopViewPage() {
   const fetchMedia = async () => {
     const imgRes = await fetch("/api/list-images");
     const vidRes = await fetch("/api/list-videos");
+    console.log("imageRes", imgRes);
+    console.log("videoRes", vidRes);
     const imgData = await imgRes.json();
     const vidData = await vidRes.json();
+    console.log("imgdata", imgData);
+    console.log("vidData", vidData);
+
     setImages(imgData.files);
     setVideos(vidData.files);
   };
