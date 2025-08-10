@@ -2242,6 +2242,7 @@
 //
 //
 // new claude version with image and video popups
+"use client";
 import { useEffect, useRef, useState } from "react";
 import * as bodyPix from "@tensorflow-models/body-pix";
 import "@tensorflow/tfjs";
