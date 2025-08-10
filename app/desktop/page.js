@@ -1997,7 +1997,7 @@ export default function DesktopViewPage() {
               {videos.slice(-4).map((vid, i) => (
                 <video
                   key={i}
-                  src={`/data/videos/${vid}`}
+                  src={vid}
                   className="w-16 h-16 object-cover rounded border flex-shrink-0"
                 />
               ))}
