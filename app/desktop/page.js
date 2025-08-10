@@ -1715,8 +1715,533 @@
 //
 //
 // second claude only version
-"use client";
+// working properly
+// "use client";
 
+// import { useEffect, useRef, useState } from "react";
+// import * as bodyPix from "@tensorflow-models/body-pix";
+// import "@tensorflow/tfjs";
+// import {
+//   ArrowUp,
+//   ArrowDown,
+//   ArrowLeft,
+//   ArrowRight,
+//   RotateCw,
+//   RotateCcw,
+// } from "lucide-react";
+// // import { sendMotorCommand } from "@/services/esp32Api"; // Import our JS API
+// import { sendMotorCommand } from "@/src/services/esp32Api";
+
+// export default function DesktopViewPage() {
+//   const videoRef = useRef(null);
+//   const peerRef = useRef(null);
+//   const wsRef = useRef(null);
+//   const mediaRecorderRef = useRef(null);
+//   const recordedChunksRef = useRef([]);
+//   const previousX = useRef(null);
+
+//   const [recording, setRecording] = useState(false);
+//   const [connected, setConnected] = useState(false);
+//   const [images, setImages] = useState([]);
+//   const [videos, setVideos] = useState([]);
+//   const [direction, setDirection] = useState("Idle");
+//   const [stabilizationActive, setStabilizationActive] = useState(false);
+//   const [obstacleSignals, setObstacleSignals] = useState({
+//     front: false,
+//     back: false,
+//     left: false,
+//     right: false,
+//   });
+//   const [panValue, setPanValue] = useState(90);
+//   const [tiltValue, setTiltValue] = useState(90);
+
+//   // WebSocket & Peer Connection
+//   const initConnection = async () => {
+//     const pc = new RTCPeerConnection();
+//     peerRef.current = pc;
+
+//     pc.ontrack = (event) => {
+//       videoRef.current.srcObject = event.streams[0];
+//     };
+
+//     const ws = new WebSocket("wss://server-production-7da7.up.railway.app");
+//     wsRef.current = ws;
+
+//     ws.onopen = () => setConnected(true);
+
+//     ws.onmessage = async (msg) => {
+//       const data =
+//         typeof msg.data === "string" ? msg.data : await msg.data.text();
+//       const parsed = JSON.parse(data);
+
+//       if (parsed.type === "offer") {
+//         await pc.setRemoteDescription(new RTCSessionDescription(parsed.offer));
+//         const answer = await pc.createAnswer();
+//         await pc.setLocalDescription(answer);
+//         ws.send(JSON.stringify({ type: "answer", answer }));
+//       } else if (parsed.type === "candidate") {
+//         await pc.addIceCandidate(new RTCIceCandidate(parsed.candidate));
+//       }
+//     };
+
+//     pc.onicecandidate = (event) => {
+//       if (event.candidate && ws.readyState === WebSocket.OPEN) {
+//         ws.send(
+//           JSON.stringify({ type: "candidate", candidate: event.candidate })
+//         );
+//       }
+//     };
+//   };
+
+//   useEffect(() => {
+//     fetchMedia();
+//   }, []);
+
+//   const fetchMedia = async () => {
+//     const imgRes = await fetch("/api/list-images");
+//     const vidRes = await fetch("/api/list-videos");
+//     console.log("imageRes", imgRes);
+//     console.log("videoRes", vidRes);
+//     const imgData = await imgRes.json();
+//     const vidData = await vidRes.json();
+//     console.log("imgdata", imgData);
+//     console.log("vidData", vidData);
+
+//     setImages(imgData.files);
+//     setVideos(vidData.files);
+//   };
+
+//   const captureImage = () => {
+//     const canvas = document.createElement("canvas");
+//     const video = videoRef.current;
+//     canvas.width = video.videoWidth;
+//     canvas.height = video.videoHeight;
+//     const ctx = canvas.getContext("2d");
+//     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+//     canvas.toBlob(async (blob) => {
+//       const formData = new FormData();
+//       formData.append("file", blob, `capture_${Date.now()}.png`);
+//       await fetch("/api/save-image", { method: "POST", body: formData });
+//       fetchMedia();
+//     }, "image/png");
+//   };
+
+//   const startRecording = () => {
+//     const stream = videoRef.current.srcObject;
+//     const recorder = new MediaRecorder(stream);
+//     mediaRecorderRef.current = recorder;
+//     recordedChunksRef.current = [];
+
+//     recorder.ondataavailable = (e) =>
+//       e.data.size > 0 && recordedChunksRef.current.push(e.data);
+//     recorder.onstop = async () => {
+//       const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
+//       const formData = new FormData();
+//       formData.append("file", blob, `recording_${Date.now()}.webm`);
+//       await fetch("/api/save-video", { method: "POST", body: formData });
+//       fetchMedia();
+//     };
+
+//     recorder.start();
+//     setRecording(true);
+//   };
+
+//   const stopRecording = () => {
+//     mediaRecorderRef.current?.stop();
+//     setRecording(false);
+//   };
+
+//   // Enhanced motor control handlers
+//   const handleDirectionClick = (direction) => {
+//     console.log(`Sending Base Control ESP32 command: ${direction}`);
+
+//     sendMotorCommand(direction, 100)
+//       .then((response) => {
+//         console.log(`Base Control ESP32 response: ${response}`);
+//       })
+//       .catch((error) => {
+//         console.error("Base Control command failed:", error);
+//       });
+//   };
+
+//   const handleButtonDown = (direction) => {
+//     handleDirectionClick(direction);
+//   };
+
+//   const handleButtonUp = () => {
+//     handleDirectionClick("stop");
+//   };
+
+//   // BodyPix tracking
+//   useEffect(() => {
+//     let net, intervalId;
+//     const trackMovement = async () => {
+//       if (!videoRef.current || videoRef.current.readyState < 2 || !net) return;
+//       const segmentation = await net.segmentPerson(videoRef.current);
+//       const mask = bodyPix.toMask(segmentation);
+//       const xCoords = [];
+//       for (let y = 0; y < mask.height; y++) {
+//         for (let x = 0; x < mask.width; x++) {
+//           if (mask.data[(y * mask.width + x) * 4 + 3] > 0) xCoords.push(x);
+//         }
+//       }
+//       if (xCoords.length > 0) {
+//         const currentX = xCoords.reduce((a, b) => a + b) / xCoords.length;
+//         if (previousX.current !== null) {
+//           const dx = currentX - previousX.current;
+//           setDirection(
+//             dx > 10 ? "➡️ Right" : dx < -10 ? "⬅️ Left" : "⏹️ Centered"
+//           );
+//         }
+//         previousX.current = currentX;
+//       }
+//     };
+
+//     const load = async () => {
+//       net = await bodyPix.load();
+//       intervalId = setInterval(trackMovement, 500);
+//     };
+//     load();
+
+//     return () => clearInterval(intervalId);
+//   }, []);
+
+//   return (
+//     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 px-4 py-6 font-sans text-slate-800">
+//       <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
+//         <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-5 text-center">
+//           <h1 className="text-2xl font-bold">📹 Tripod Control Panel</h1>
+//           <p className="text-blue-100 text-sm">Live Stream & Full Controls</p>
+//         </div>
+
+//         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 p-5">
+//           {/* Video Stream Section */}
+//           <div className="lg:col-span-1 space-y-4">
+//             <div
+//               className={`text-center py-2 rounded-lg text-sm font-medium ${
+//                 connected
+//                   ? "bg-green-100 text-green-800"
+//                   : "bg-red-100 text-red-800"
+//               }`}
+//             >
+//               {connected ? "🟢 Connected" : "🔴 Not Connected"}
+//             </div>
+
+//             <div className="aspect-video bg-black rounded-xl overflow-hidden">
+//               <video
+//                 ref={videoRef}
+//                 autoPlay
+//                 playsInline
+//                 muted
+//                 className="w-full h-full object-cover"
+//               />
+//             </div>
+
+//             <div className="text-center py-2 text-sm font-semibold text-slate-700">
+//               🧭 {direction}
+//             </div>
+
+//             <div className="grid grid-cols-3 gap-2">
+//               {!connected ? (
+//                 <button
+//                   onClick={initConnection}
+//                   className="col-span-3 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded text-sm font-medium transition"
+//                 >
+//                   🔌 Connect
+//                 </button>
+//               ) : (
+//                 <>
+//                   <button
+//                     onClick={captureImage}
+//                     className="bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded text-sm font-medium transition"
+//                   >
+//                     📸
+//                   </button>
+//                   {!recording ? (
+//                     <button
+//                       onClick={startRecording}
+//                       className="bg-amber-500 hover:bg-amber-600 text-white py-2 rounded text-sm font-medium transition"
+//                     >
+//                       ⏺️
+//                     </button>
+//                   ) : (
+//                     <button
+//                       onClick={stopRecording}
+//                       className="bg-red-600 hover:bg-red-700 text-white py-2 rounded text-sm font-medium transition"
+//                     >
+//                       ⏹️
+//                     </button>
+//                   )}
+//                   <button
+//                     onClick={() => sendMotorCommand("reboot")}
+//                     className="bg-gray-500 hover:bg-gray-600 text-white py-2 rounded text-sm font-medium transition"
+//                   >
+//                     🔁
+//                   </button>
+//                 </>
+//               )}
+//             </div>
+//           </div>
+
+//           {/* Media Gallery (Mini) */}
+//           <div>
+//             <h3 className="text-sm font-semibold mb-2 text-center">📷 Media</h3>
+//             <div className="flex gap-1 overflow-x-auto py-1 max-w-full">
+//               {images.slice(-4).map((img, i) => (
+//                 <img
+//                   key={i}
+//                   src={img}
+//                   alt="img"
+//                   className="w-16 h-16 object-cover rounded border flex-shrink-0"
+//                 />
+//               ))}
+//               {videos.slice(-4).map((vid, i) => (
+//                 <video
+//                   key={i}
+//                   src={vid}
+//                   className="w-16 h-16 object-cover rounded border flex-shrink-0"
+//                 />
+//               ))}
+//             </div>
+//           </div>
+
+//           {/* Controls Section */}
+//           <div className="lg:col-span-3 space-y-5">
+//             {/* Omnidirectional Base */}
+//             <div className="bg-slate-50 p-4 rounded-xl border">
+//               <h3 className="text-center font-semibold text-slate-700 mb-3">
+//                 🔄 Omnidirectional Base
+//               </h3>
+//               <div className="grid grid-cols-3 gap-3 max-w-48 mx-auto">
+//                 {/* Top row */}
+//                 <div
+//                   className="bg-blue-600 hover:bg-blue-700 text-white text-xl rounded-lg py-3 flex items-center justify-center cursor-pointer transition-colors select-none"
+//                   onMouseDown={() => handleButtonDown("rLeft")}
+//                   onMouseUp={handleButtonUp}
+//                   onTouchStart={() => handleButtonDown("rLeft")}
+//                   onTouchEnd={handleButtonUp}
+//                   title="Rotate Left"
+//                 >
+//                   <RotateCcw size={24} />
+//                 </div>
+//                 <div
+//                   className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg py-3 flex items-center justify-center cursor-pointer transition-colors select-none"
+//                   onMouseDown={() => handleButtonDown("forward")}
+//                   onMouseUp={handleButtonUp}
+//                   onTouchStart={() => handleButtonDown("forward")}
+//                   onTouchEnd={handleButtonUp}
+//                   title="Move Forward"
+//                 >
+//                   <ArrowUp size={28} />
+//                 </div>
+//                 <div
+//                   className="bg-blue-600 hover:bg-blue-700 text-white text-xl rounded-lg py-3 flex items-center justify-center cursor-pointer transition-colors select-none"
+//                   onMouseDown={() => handleButtonDown("rRight")}
+//                   onMouseUp={handleButtonUp}
+//                   onTouchStart={() => handleButtonDown("rRight")}
+//                   onTouchEnd={handleButtonUp}
+//                   title="Rotate Right"
+//                 >
+//                   <RotateCw size={24} />
+//                 </div>
+
+//                 {/* Middle row */}
+//                 <div
+//                   className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg py-3 flex items-center justify-center cursor-pointer transition-colors select-none"
+//                   onMouseDown={() => handleButtonDown("left")}
+//                   onMouseUp={handleButtonUp}
+//                   onTouchStart={() => handleButtonDown("left")}
+//                   onTouchEnd={handleButtonUp}
+//                   title="Strafe Left"
+//                 >
+//                   <ArrowLeft size={28} />
+//                 </div>
+//                 <div
+//                   className="bg-gray-500 text-white text-xl rounded-lg py-3 flex items-center justify-center"
+//                   title="Base Center"
+//                 >
+//                   <span className="w-2 h-2 rounded-full bg-white"></span>
+//                 </div>
+//                 <div
+//                   className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg py-3 flex items-center justify-center cursor-pointer transition-colors select-none"
+//                   onMouseDown={() => handleButtonDown("right")}
+//                   onMouseUp={handleButtonUp}
+//                   onTouchStart={() => handleButtonDown("right")}
+//                   onTouchEnd={handleButtonUp}
+//                   title="Strafe Right"
+//                 >
+//                   <ArrowRight size={28} />
+//                 </div>
+
+//                 {/* Bottom row */}
+//                 <div></div>
+//                 <div
+//                   className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg py-3 flex items-center justify-center cursor-pointer transition-colors select-none"
+//                   onMouseDown={() => handleButtonDown("backward")}
+//                   onMouseUp={handleButtonUp}
+//                   onTouchStart={() => handleButtonDown("backward")}
+//                   onTouchEnd={handleButtonUp}
+//                   title="Move Backward"
+//                 >
+//                   <ArrowDown size={28} />
+//                 </div>
+//                 <div></div>
+//               </div>
+
+//               <div className="mt-4 text-center">
+//                 <p className="text-xs text-gray-500">
+//                   3-Motor Omnidirectional Base Control
+//                 </p>
+//               </div>
+//             </div>
+
+//             {/* Two Column Layout for Additional Controls */}
+//             <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+//               {/* Height Controls */}
+//               <div className="bg-slate-50 p-4 rounded-xl border">
+//                 <h3 className="text-center font-semibold text-slate-700 mb-3">
+//                   📏 Height Control (Motors)
+//                 </h3>
+//                 <div className="grid grid-cols-4 gap-3 text-center">
+//                   {["M1", "M2", "M3"].map((motor, i) => (
+//                     <div key={motor}>
+//                       <div className="font-medium text-slate-700">{motor}</div>
+//                       <button
+//                         onClick={() => alert(`${motor} Up`)}
+//                         className="w-full bg-blue-600 text-white text-lg rounded py-2 mt-1"
+//                       >
+//                         ▲
+//                       </button>
+//                       <button
+//                         onClick={() => alert(`${motor} Down`)}
+//                         className="w-full bg-blue-600 text-white text-lg rounded py-2 mt-1"
+//                       >
+//                         ▼
+//                       </button>
+//                     </div>
+//                   ))}
+//                   <div className="space-y-2">
+//                     <button
+//                       onClick={() => alert("All Up")}
+//                       className="w-full bg-green-600 text-white text-sm py-2 rounded"
+//                     >
+//                       All Up
+//                     </button>
+//                     <button
+//                       onClick={() => alert("All Down")}
+//                       className="w-full bg-red-600 text-white text-sm py-2 rounded"
+//                     >
+//                       All Down
+//                     </button>
+//                   </div>
+//                 </div>
+//               </div>
+
+//               {/* Stabilization */}
+//               <div className="bg-slate-50 p-4 rounded-xl border">
+//                 <h3 className="text-center font-semibold text-slate-700 mb-3">
+//                   ⚖️ Stabilization
+//                 </h3>
+//                 <div className="flex flex-col sm:flex-row gap-3">
+//                   <button
+//                     onClick={() => setStabilizationActive(true)}
+//                     className={`flex-1 py-3 rounded font-medium text-white transition ${
+//                       stabilizationActive
+//                         ? "bg-green-600"
+//                         : "bg-gray-400 hover:bg-gray-500"
+//                     }`}
+//                   >
+//                     Start Stabilize
+//                   </button>
+//                   <button
+//                     onClick={() => setStabilizationActive(false)}
+//                     className={`flex-1 py-3 rounded font-medium text-white transition ${
+//                       !stabilizationActive
+//                         ? "bg-red-600"
+//                         : "bg-gray-400 hover:bg-gray-500"
+//                     }`}
+//                   >
+//                     Stop Stabilize
+//                   </button>
+//                 </div>
+//               </div>
+
+//               {/* Pan/Tilt */}
+//               <div className="bg-slate-50 p-4 rounded-xl border">
+//                 <h3 className="text-center font-semibold text-slate-700 mb-3">
+//                   🔄 Pan / Tilt
+//                 </h3>
+//                 <div className="space-y-4">
+//                   <div>
+//                     <label className="block text-sm font-medium text-slate-700">
+//                       Pan ({panValue}°)
+//                     </label>
+//                     <input
+//                       type="range"
+//                       min="0"
+//                       max="180"
+//                       value={panValue}
+//                       onChange={(e) => setPanValue(Number(e.target.value))}
+//                       className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
+//                     />
+//                   </div>
+//                   <div>
+//                     <label className="block text-sm font-medium text-slate-700">
+//                       Tilt ({tiltValue}°)
+//                     </label>
+//                     <input
+//                       type="range"
+//                       min="0"
+//                       max="180"
+//                       value={tiltValue}
+//                       onChange={(e) => setTiltValue(Number(e.target.value))}
+//                       className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
+//                     />
+//                   </div>
+//                   <button
+//                     onClick={() => {
+//                       setPanValue(90);
+//                       setTiltValue(90);
+//                     }}
+//                     className="w-full bg-blue-600 text-white py-2 rounded font-medium"
+//                   >
+//                     Center
+//                   </button>
+//                 </div>
+//               </div>
+
+//               {/* Obstacle Detection */}
+//               <div className="bg-slate-50 p-4 rounded-xl border">
+//                 <h3 className="text-center font-semibold text-slate-700 mb-3">
+//                   🚨 Obstacle Detection
+//                 </h3>
+//                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+//                   {Object.entries(obstacleSignals).map(([dir, active]) => (
+//                     <div
+//                       key={dir}
+//                       className={`p-3 rounded-lg text-center font-medium text-white ${
+//                         active ? "bg-green-600" : "bg-gray-500"
+//                       }`}
+//                     >
+//                       {dir.charAt(0).toUpperCase() + dir.slice(1)}
+//                       <div className="text-xs mt-1">
+//                         {active ? "Detected" : "Clear"}
+//                       </div>
+//                     </div>
+//                   ))}
+//                 </div>
+//               </div>
+//             </div>
+//           </div>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }
+
+//
+//
+// new claude version with image and video popups
 import { useEffect, useRef, useState } from "react";
 import * as bodyPix from "@tensorflow-models/body-pix";
 import "@tensorflow/tfjs";
@@ -1727,12 +2252,18 @@ import {
   ArrowRight,
   RotateCw,
   RotateCcw,
+  X,
+  Play,
+  Pause,
+  FastForward,
+  Rewind,
 } from "lucide-react";
 // import { sendMotorCommand } from "@/services/esp32Api"; // Import our JS API
 import { sendMotorCommand } from "@/src/services/esp32Api";
 
 export default function DesktopViewPage() {
   const videoRef = useRef(null);
+  const modalVideoRef = useRef(null);
   const peerRef = useRef(null);
   const wsRef = useRef(null);
   const mediaRecorderRef = useRef(null);
@@ -1753,6 +2284,13 @@ export default function DesktopViewPage() {
   });
   const [panValue, setPanValue] = useState(90);
   const [tiltValue, setTiltValue] = useState(90);
+
+  // Modal states - NEW ADDITION
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState("");
+  const [selectedVideo, setSelectedVideo] = useState("");
+  const [videoPlaying, setVideoPlaying] = useState(false);
 
   // WebSocket & Peer Connection
   const initConnection = async () => {
@@ -1871,6 +2409,55 @@ export default function DesktopViewPage() {
     handleDirectionClick("stop");
   };
 
+  // Media modal handlers - NEW ADDITION
+  const openImageModal = (imageSrc) => {
+    setSelectedImage(imageSrc);
+    setShowImageModal(true);
+  };
+
+  const closeImageModal = () => {
+    setShowImageModal(false);
+    setSelectedImage("");
+  };
+
+  const openVideoModal = (videoSrc) => {
+    setSelectedVideo(videoSrc);
+    setShowVideoModal(true);
+    setVideoPlaying(false);
+  };
+
+  const closeVideoModal = () => {
+    setShowVideoModal(false);
+    setSelectedVideo("");
+    setVideoPlaying(false);
+    if (modalVideoRef.current) {
+      modalVideoRef.current.pause();
+    }
+  };
+
+  const toggleVideoPlayback = () => {
+    if (modalVideoRef.current) {
+      if (videoPlaying) {
+        modalVideoRef.current.pause();
+      } else {
+        modalVideoRef.current.play();
+      }
+      setVideoPlaying(!videoPlaying);
+    }
+  };
+
+  const fastForwardVideo = () => {
+    if (modalVideoRef.current) {
+      modalVideoRef.current.currentTime += 10;
+    }
+  };
+
+  const rewindVideo = () => {
+    if (modalVideoRef.current) {
+      modalVideoRef.current.currentTime -= 10;
+    }
+  };
+
   // BodyPix tracking
   useEffect(() => {
     let net, intervalId;
@@ -1982,8 +2569,8 @@ export default function DesktopViewPage() {
             </div>
           </div>
 
-          {/* Media Gallery (Mini) */}
-          {/* <div>
+          {/* Media Gallery (Mini) - ENHANCED WITH POPUP FUNCTIONALITY */}
+          <div>
             <h3 className="text-sm font-semibold mb-2 text-center">📷 Media</h3>
             <div className="flex gap-1 overflow-x-auto py-1 max-w-full">
               {images.slice(-4).map((img, i) => (
@@ -1991,92 +2578,25 @@ export default function DesktopViewPage() {
                   key={i}
                   src={img}
                   alt="img"
-                  className="w-16 h-16 object-cover rounded border flex-shrink-0"
+                  className="w-16 h-16 object-cover rounded border flex-shrink-0 cursor-pointer hover:opacity-80 transition"
+                  onClick={() => openImageModal(img)}
                 />
               ))}
               {videos.slice(-4).map((vid, i) => (
-                <video
+                <div
                   key={i}
-                  src={vid}
-                  className="w-16 h-16 object-cover rounded border flex-shrink-0"
-                />
+                  className="relative w-16 h-16 cursor-pointer hover:opacity-80 transition"
+                  onClick={() => openVideoModal(vid)}
+                >
+                  <video
+                    src={vid}
+                    className="w-full h-full object-cover rounded border flex-shrink-0"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded">
+                    <Play className="text-white" size={16} />
+                  </div>
+                </div>
               ))}
-            </div>
-          </div> */}
-          {/* new media section */}
-          {/* Media Gallery */}
-          <div className="bg-slate-50 p-4 rounded-xl border space-y-5">
-            <h3 className="text-center font-semibold text-slate-700">
-              📁 Media Gallery
-            </h3>
-
-            {/* Images */}
-            <div>
-              <h4 className="text-sm font-medium text-slate-700 mb-2">
-                Images
-              </h4>
-              {images.length === 0 ? (
-                <p className="text-sm text-slate-500 italic">
-                  No images captured yet.
-                </p>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {images.map((file) => (
-                    <div
-                      key={file}
-                      className="relative group cursor-pointer aspect-video bg-slate-200 rounded-lg overflow-hidden"
-                      onClick={() => {
-                        setSelectedMedia(file);
-                        setMediaType("image");
-                      }}
-                    >
-                      <img
-                        src={`/api/images/${file}`}
-                        alt={file}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                      />
-                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all"></div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Videos */}
-            <div>
-              <h4 className="text-sm font-medium text-slate-700 mb-2">
-                Videos
-              </h4>
-              {videos.length === 0 ? (
-                <p className="text-sm text-slate-500 italic">
-                  No videos recorded yet.
-                </p>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {videos.map((file) => (
-                    <div
-                      key={file}
-                      className="relative group cursor-pointer aspect-video bg-slate-200 rounded-lg overflow-hidden"
-                      onClick={() => {
-                        setSelectedMedia(file);
-                        setMediaType("video");
-                      }}
-                    >
-                      <video
-                        src={`/api/videos/${file}`}
-                        className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
-                        muted
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end justify-center pb-3">
-                        <span className="text-white text-xs font-medium">
-                          ▶ Play
-                        </span>
-                      </div>
-                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all"></div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
 
@@ -2310,50 +2830,68 @@ export default function DesktopViewPage() {
           </div>
         </div>
       </div>
-      {/* Media Modal */}
-      {selectedMedia && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4"
-          onClick={() => setSelectedMedia(null)} // Close on backdrop click
-          onKeyDown={(e) => {
-            if (e.key === "Escape") setSelectedMedia(null);
-          }}
-          role="dialog"
-          aria-modal="true"
-        >
-          <div
-            className="relative max-w-4xl w-full max-h-full"
-            onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
-          >
-            {/* Close Button */}
+
+      {/* Image Modal - NEW ADDITION */}
+      {showImageModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="relative max-w-4xl max-h-full">
             <button
-              onClick={() => setSelectedMedia(null)}
-              className="absolute top-2 right-2 z-10 bg-red-600 text-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg hover:bg-red-700 focus:outline-none"
-              aria-label="Close modal"
+              onClick={closeImageModal}
+              className="absolute -top-10 right-0 text-white hover:text-gray-300 transition"
             >
-              ×
+              <X size={32} />
             </button>
+            <img
+              src={selectedImage}
+              alt="Full size"
+              className="max-w-full max-h-screen object-contain rounded-lg"
+            />
+          </div>
+        </div>
+      )}
 
-            {/* Image */}
-            {mediaType === "image" && (
-              <img
-                src={`/api/images/${selectedMedia}`}
-                alt="Selected"
-                className="w-full h-auto max-h-[90vh] object-contain rounded-lg shadow-2xl"
-              />
-            )}
-
-            {/* Video */}
-            {mediaType === "video" && (
+      {/* Video Modal - NEW ADDITION */}
+      {showVideoModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="relative max-w-4xl max-h-full">
+            <button
+              onClick={closeVideoModal}
+              className="absolute -top-10 right-0 text-white hover:text-gray-300 transition"
+            >
+              <X size={32} />
+            </button>
+            <div className="relative">
               <video
-                src={`/api/videos/${selectedMedia}`}
-                controls
-                className="w-full h-auto max-h-[90vh] rounded-lg shadow-2xl"
-                autoPlay
-              >
-                Your browser does not support the video tag.
-              </video>
-            )}
+                ref={modalVideoRef}
+                src={selectedVideo}
+                className="max-w-full max-h-screen object-contain rounded-lg"
+                onPlay={() => setVideoPlaying(true)}
+                onPause={() => setVideoPlaying(false)}
+              />
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-3 bg-black bg-opacity-50 rounded-lg p-3">
+                <button
+                  onClick={rewindVideo}
+                  className="text-white hover:text-gray-300 transition"
+                  title="Rewind 10s"
+                >
+                  <Rewind size={24} />
+                </button>
+                <button
+                  onClick={toggleVideoPlayback}
+                  className="text-white hover:text-gray-300 transition"
+                  title={videoPlaying ? "Pause" : "Play"}
+                >
+                  {videoPlaying ? <Pause size={24} /> : <Play size={24} />}
+                </button>
+                <button
+                  onClick={fastForwardVideo}
+                  className="text-white hover:text-gray-300 transition"
+                  title="Fast Forward 10s"
+                >
+                  <FastForward size={24} />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
