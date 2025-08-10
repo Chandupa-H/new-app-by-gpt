@@ -1983,7 +1983,7 @@ export default function DesktopViewPage() {
           </div>
 
           {/* Media Gallery (Mini) */}
-          <div>
+          {/* <div>
             <h3 className="text-sm font-semibold mb-2 text-center">📷 Media</h3>
             <div className="flex gap-1 overflow-x-auto py-1 max-w-full">
               {images.slice(-4).map((img, i) => (
@@ -2001,6 +2001,82 @@ export default function DesktopViewPage() {
                   className="w-16 h-16 object-cover rounded border flex-shrink-0"
                 />
               ))}
+            </div>
+          </div> */}
+          {/* new media section */}
+          {/* Media Gallery */}
+          <div className="bg-slate-50 p-4 rounded-xl border space-y-5">
+            <h3 className="text-center font-semibold text-slate-700">
+              📁 Media Gallery
+            </h3>
+
+            {/* Images */}
+            <div>
+              <h4 className="text-sm font-medium text-slate-700 mb-2">
+                Images
+              </h4>
+              {images.length === 0 ? (
+                <p className="text-sm text-slate-500 italic">
+                  No images captured yet.
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {images.map((file) => (
+                    <div
+                      key={file}
+                      className="relative group cursor-pointer aspect-video bg-slate-200 rounded-lg overflow-hidden"
+                      onClick={() => {
+                        setSelectedMedia(file);
+                        setMediaType("image");
+                      }}
+                    >
+                      <img
+                        src={`/api/images/${file}`}
+                        alt={file}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                      />
+                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all"></div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Videos */}
+            <div>
+              <h4 className="text-sm font-medium text-slate-700 mb-2">
+                Videos
+              </h4>
+              {videos.length === 0 ? (
+                <p className="text-sm text-slate-500 italic">
+                  No videos recorded yet.
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {videos.map((file) => (
+                    <div
+                      key={file}
+                      className="relative group cursor-pointer aspect-video bg-slate-200 rounded-lg overflow-hidden"
+                      onClick={() => {
+                        setSelectedMedia(file);
+                        setMediaType("video");
+                      }}
+                    >
+                      <video
+                        src={`/api/videos/${file}`}
+                        className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                        muted
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end justify-center pb-3">
+                        <span className="text-white text-xs font-medium">
+                          ▶ Play
+                        </span>
+                      </div>
+                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all"></div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -2234,6 +2310,53 @@ export default function DesktopViewPage() {
           </div>
         </div>
       </div>
+      {/* Media Modal */}
+      {selectedMedia && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedMedia(null)} // Close on backdrop click
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setSelectedMedia(null);
+          }}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="relative max-w-4xl w-full max-h-full"
+            onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => setSelectedMedia(null)}
+              className="absolute top-2 right-2 z-10 bg-red-600 text-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg hover:bg-red-700 focus:outline-none"
+              aria-label="Close modal"
+            >
+              ×
+            </button>
+
+            {/* Image */}
+            {mediaType === "image" && (
+              <img
+                src={`/api/images/${selectedMedia}`}
+                alt="Selected"
+                className="w-full h-auto max-h-[90vh] object-contain rounded-lg shadow-2xl"
+              />
+            )}
+
+            {/* Video */}
+            {mediaType === "video" && (
+              <video
+                src={`/api/videos/${selectedMedia}`}
+                controls
+                className="w-full h-auto max-h-[90vh] rounded-lg shadow-2xl"
+                autoPlay
+              >
+                Your browser does not support the video tag.
+              </video>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
