@@ -3709,6 +3709,8 @@ export default function DesktopViewPage() {
   const [selectedVideo, setSelectedVideo] = useState("");
   const [videoPlaying, setVideoPlaying] = useState(false);
 
+  images ? console.log(images) : null;
+
   // WebSocket & Peer Connection
   const initConnection = async () => {
     const pc = new RTCPeerConnection();
