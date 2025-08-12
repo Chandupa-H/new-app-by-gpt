@@ -4128,7 +4128,7 @@ export default function DesktopViewPage() {
           <div>
             <h3 className="text-sm font-semibold mb-2 text-center">📷 Media</h3>
             <div className="flex gap-1 overflow-x-auto py-1 max-w-full">
-              {images.slice(-4).map((img, i) => (
+              {images.map((img, i) => (
                 <img
                   key={i}
                   src={img}
@@ -4137,7 +4137,7 @@ export default function DesktopViewPage() {
                   onClick={() => openImageModal(img)}
                 />
               ))}
-              {videos.slice(-4).map((vid, i) => (
+              {videos.map((vid, i) => (
                 <div
                   key={i}
                   className="relative w-16 h-16 cursor-pointer hover:opacity-80 transition"
