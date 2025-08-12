@@ -3775,6 +3775,64 @@ export default function DesktopViewPage() {
     }, "image/png");
   };
 
+  // const capturePanorama = async () => {
+  //   setCapturingPanorama(true);
+  //   setPanoramaProgress(0);
+
+  //   try {
+  //     const frames = [];
+  //     const steps = 18; // Capture every 20 degrees for 360° panorama
+  //     const canvas = document.createElement("canvas");
+  //     const video = videoRef.current;
+  //     canvas.width = video.videoWidth;
+  //     canvas.height = video.videoHeight;
+  //     const ctx = canvas.getContext("2d");
+
+  //     // Move to starting position (far left)
+  //     // await sendActuatorCommand("pan", "left", 180);
+  //     await new Promise((resolve) => setTimeout(resolve, 2000));
+
+  //     // Capture frames while panning
+  //     for (let i = 0; i < steps; i++) {
+  //       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  //       const frameBlob = await new Promise((resolve) =>
+  //         canvas.toBlob(resolve, "image/jpeg", 0.8)
+  //       );
+  //       frames.push(frameBlob);
+
+  //       setPanoramaProgress(Math.round(((i + 1) / steps) * 100));
+
+  //       // Pan right by 20 degrees
+  //       // await sendActuatorCommand("pan", "right", 20);
+  //       await new Promise((resolve) => setTimeout(resolve, 1000));
+  //     }
+
+  //     // Reset pan position
+  //     // await sendActuatorCommand("pan", "center");
+
+  //     // Upload individual frames
+  //     for (let i = 0; i < frames.length; i++) {
+  //       const formData = new FormData();
+  //       formData.append("file", frames[i], `panorama_${Date.now()}_${i}.jpg`);
+  //       await fetch("/api/save-image", { method: "POST", body: formData });
+  //     }
+
+  //     // Optionally: Call panorama stitching API
+  //     // const stitchResponse = await fetch("/api/stitch-panorama", {
+  //     //   method: "POST",
+  //     //   headers: { "Content-Type": "application/json" },
+  //     //   body: JSON.stringify({ frames })
+  //     // });
+
+  //     fetchMedia();
+  //   } catch (error) {
+  //     console.error("Panorama capture failed:", error);
+  //   } finally {
+  //     setCapturingPanorama(false);
+  //     setPanoramaProgress(0);
+  //   }
+  // };
+
   const capturePanorama = async () => {
     setCapturingPanorama(true);
     setPanoramaProgress(0);
@@ -3810,21 +3868,31 @@ export default function DesktopViewPage() {
       // Reset pan position
       // await sendActuatorCommand("pan", "center");
 
-      // Upload individual frames
-      for (let i = 0; i < frames.length; i++) {
-        const formData = new FormData();
-        formData.append("file", frames[i], `panorama_${Date.now()}_${i}.jpg`);
-        await fetch("/api/save-image", { method: "POST", body: formData });
+      // Create panorama canvas (width is frame width * number of frames)
+      const panoramaCanvas = document.createElement("canvas");
+      panoramaCanvas.width = canvas.width * frames.length;
+      panoramaCanvas.height = canvas.height;
+      const panoramaCtx = panoramaCanvas.getContext("2d");
+
+      // Stitch frames horizontally
+      let xPos = 0;
+      for (const frameBlob of frames) {
+        const img = await createImageBitmap(frameBlob);
+        panoramaCtx.drawImage(img, xPos, 0);
+        xPos += img.width;
       }
 
-      // Optionally: Call panorama stitching API
-      // const stitchResponse = await fetch("/api/stitch-panorama", {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify({ frames })
-      // });
-
-      fetchMedia();
+      // Convert panorama to blob and upload
+      panoramaCanvas.toBlob(
+        async (panoramaBlob) => {
+          const formData = new FormData();
+          formData.append("file", panoramaBlob, `panorama_${Date.now()}.jpg`);
+          await fetch("/api/save-image", { method: "POST", body: formData });
+          fetchMedia();
+        },
+        "image/jpeg",
+        0.9
+      );
     } catch (error) {
       console.error("Panorama capture failed:", error);
     } finally {
@@ -3832,7 +3900,6 @@ export default function DesktopViewPage() {
       setPanoramaProgress(0);
     }
   };
-
   const startRecording = () => {
     const stream = videoRef.current.srcObject;
     const recorder = new MediaRecorder(stream);
