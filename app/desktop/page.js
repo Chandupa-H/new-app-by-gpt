@@ -2891,7 +2891,7 @@ import {
 import { sendMotorCommand } from "@/src/services/esp32Api";
 import { sendActuatorCommand } from "@/src/services/actuator";
 
-export default function DesktopViewPage() {
+function DesktopViewPage() {
   const videoRef = useRef(null);
   const modalVideoRef = useRef(null);
   const peerRef = useRef(null);
@@ -3645,3 +3645,5 @@ export default function DesktopViewPage() {
     </div>
   );
 }
+
+export default DesktopViewPage;
