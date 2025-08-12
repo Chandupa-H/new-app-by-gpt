@@ -3789,8 +3789,8 @@ export default function DesktopViewPage() {
       const ctx = canvas.getContext("2d");
 
       // Move to starting position (far left)
-      await sendActuatorCommand("pan", "left", 180);
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // await sendActuatorCommand("pan", "left", 180);
+      // await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Capture frames while panning
       for (let i = 0; i < steps; i++) {
@@ -3803,12 +3803,12 @@ export default function DesktopViewPage() {
         setPanoramaProgress(Math.round(((i + 1) / steps) * 100));
 
         // Pan right by 20 degrees
-        await sendActuatorCommand("pan", "right", 20);
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        // await sendActuatorCommand("pan", "right", 20);
+        // await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
       // Reset pan position
-      await sendActuatorCommand("pan", "center");
+      // await sendActuatorCommand("pan", "center");
 
       // Upload individual frames
       for (let i = 0; i < frames.length; i++) {
