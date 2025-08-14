@@ -1,7 +1,7 @@
 // src/services/esp32Api.js
 
 // HARD-CODED ESP32 IP
-const ESP32_IP = "172.25.249.214"; // <-- Change to your ESP32 IP
+const ESP32_IP = "172.25.249.22"; // <-- Change to your ESP32 IP
 const BASE_URL = `http://${ESP32_IP}`;
 
 export const sendActuatorCommand = async (motor, direction) => {
