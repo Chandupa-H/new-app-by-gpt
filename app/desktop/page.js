@@ -3783,50 +3783,50 @@ export default function DesktopViewPage() {
     setCapturingPanorama(true);
     setPanoramaProgress(0);
 
-    const steps = 12; // e.g., 12 shots → 360° / 12 = 30° per step
-    const capturedFiles = [];
+    const steps = 6; // number of frames (adjust for smoother pano)
+    const capturedCanvases = [];
 
     for (let i = 0; i < steps; i++) {
-      // Rotate ESP32 base step-by-step
-      await sendMotorCommand("rRight", 100);
-      await new Promise((res) => setTimeout(res, 1000)); // wait for rotation
+      // rotate slightly each step
+      // await sendMotorCommand("rRight", 80);
+      await new Promise((res) => setTimeout(res, 1200)); // wait rotation + stabilization
 
-      // Capture image
+      // capture frame
       const canvas = document.createElement("canvas");
       const video = videoRef.current;
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       const ctx = canvas.getContext("2d");
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      await new Promise((resolve) => {
-        canvas.toBlob(async (blob) => {
-          const fileName = `pano_${Date.now()}_${i}.png`;
-          const formData = new FormData();
-          formData.append("file", blob, fileName);
-          const res = await fetch("/api/save-image", {
-            method: "POST",
-            body: formData,
-          });
-          const { filePath } = await res.json();
-          capturedFiles.push(filePath);
-          resolve();
-        }, "image/png");
-      });
+      capturedCanvases.push(canvas);
 
       setPanoramaProgress(Math.round(((i + 1) / steps) * 100));
     }
 
-    // Send captured images to backend for stitching
-    await fetch("/api/stitch-panorama", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ images: capturedFiles }),
+    // Merge all frames side by side
+    const panoWidth = capturedCanvases.reduce((acc, c) => acc + c.width, 0);
+    const panoHeight = capturedCanvases[0].height;
+    const panoCanvas = document.createElement("canvas");
+    panoCanvas.width = panoWidth;
+    panoCanvas.height = panoHeight;
+    const panoCtx = panoCanvas.getContext("2d");
+
+    let offsetX = 0;
+    capturedCanvases.forEach((c) => {
+      panoCtx.drawImage(c, offsetX, 0);
+      offsetX += c.width;
     });
+
+    // Upload final panorama
+    panoCanvas.toBlob(async (blob) => {
+      const formData = new FormData();
+      formData.append("file", blob, `panorama_${Date.now()}.png`);
+      await fetch("/api/save-image", { method: "POST", body: formData });
+      fetchMedia();
+    }, "image/png");
 
     setCapturingPanorama(false);
     setPanoramaProgress(0);
-    fetchMedia(); // refresh gallery
   };
 
   const startRecording = () => {
