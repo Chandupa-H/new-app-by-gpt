@@ -3655,6 +3655,745 @@
 //
 // new version with deepseek
 // panaroma features
+// #########latest###############
+// "use client";
+// import { useEffect, useRef, useState } from "react";
+// import * as bodyPix from "@tensorflow-models/body-pix";
+// import "@tensorflow/tfjs";
+// import {
+//   ArrowUp,
+//   ArrowDown,
+//   ArrowLeft,
+//   ArrowRight,
+//   RotateCw,
+//   RotateCcw,
+//   X,
+//   Play,
+//   Pause,
+//   FastForward,
+//   Rewind,
+//   Camera,
+// } from "lucide-react";
+// import { sendMotorCommand } from "@/src/services/esp32Api";
+// import { sendActuatorCommand } from "@/src/services/actuator";
+
+// export default function DesktopViewPage() {
+//   const videoRef = useRef(null);
+//   const modalVideoRef = useRef(null);
+//   const peerRef = useRef(null);
+//   const wsRef = useRef(null);
+//   const mediaRecorderRef = useRef(null);
+//   const recordedChunksRef = useRef([]);
+//   const previousX = useRef(null);
+
+//   const [recording, setRecording] = useState(false);
+//   const [connected, setConnected] = useState(false);
+//   const [images, setImages] = useState([]);
+//   const [videos, setVideos] = useState([]);
+//   const [direction, setDirection] = useState("Idle");
+//   const [stabilizationActive, setStabilizationActive] = useState(false);
+//   const [obstacleSignals, setObstacleSignals] = useState({
+//     front: false,
+//     back: false,
+//     left: false,
+//     right: false,
+//   });
+//   const [panValue, setPanValue] = useState(90);
+//   const [tiltValue, setTiltValue] = useState(90);
+//   const [capturingPanorama, setCapturingPanorama] = useState(false);
+//   const [panoramaProgress, setPanoramaProgress] = useState(0);
+
+//   // Modal states
+//   const [showImageModal, setShowImageModal] = useState(false);
+//   const [showVideoModal, setShowVideoModal] = useState(false);
+//   const [selectedImage, setSelectedImage] = useState("");
+//   const [selectedVideo, setSelectedVideo] = useState("");
+//   const [videoPlaying, setVideoPlaying] = useState(false);
+
+//   images ? console.log(images) : null;
+
+//   // WebSocket & Peer Connection
+//   const initConnection = async () => {
+//     const pc = new RTCPeerConnection();
+//     peerRef.current = pc;
+
+//     pc.ontrack = (event) => {
+//       videoRef.current.srcObject = event.streams[0];
+//     };
+
+//     const ws = new WebSocket("wss://server-production-7da7.up.railway.app");
+//     wsRef.current = ws;
+
+//     ws.onopen = () => setConnected(true);
+
+//     ws.onmessage = async (msg) => {
+//       const data =
+//         typeof msg.data === "string" ? msg.data : await msg.data.text();
+//       const parsed = JSON.parse(data);
+
+//       if (parsed.type === "offer") {
+//         await pc.setRemoteDescription(new RTCSessionDescription(parsed.offer));
+//         const answer = await pc.createAnswer();
+//         await pc.setLocalDescription(answer);
+//         ws.send(JSON.stringify({ type: "answer", answer }));
+//       } else if (parsed.type === "candidate") {
+//         await pc.addIceCandidate(new RTCIceCandidate(parsed.candidate));
+//       }
+//     };
+
+//     pc.onicecandidate = (event) => {
+//       if (event.candidate && ws.readyState === WebSocket.OPEN) {
+//         ws.send(
+//           JSON.stringify({ type: "candidate", candidate: event.candidate })
+//         );
+//       }
+//     };
+//   };
+
+//   useEffect(() => {
+//     fetchMedia();
+//   }, []);
+
+//   const fetchMedia = async () => {
+//     const imgRes = await fetch("/api/list-images");
+//     const vidRes = await fetch("/api/list-videos");
+//     const imgData = await imgRes.json();
+//     console.log("imageData", imgData);
+
+//     const vidData = await vidRes.json();
+//     setImages(imgData.files);
+//     setVideos(vidData.files);
+//   };
+
+//   const captureImage = () => {
+//     const canvas = document.createElement("canvas");
+//     const video = videoRef.current;
+//     canvas.width = video.videoWidth;
+//     canvas.height = video.videoHeight;
+//     const ctx = canvas.getContext("2d");
+//     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+//     canvas.toBlob(async (blob) => {
+//       const formData = new FormData();
+//       formData.append("file", blob, `capture_${Date.now()}.png`);
+//       await fetch("/api/save-image", { method: "POST", body: formData });
+//       fetchMedia();
+//     }, "image/png");
+//   };
+
+//   const capturePanorama = async () => {
+//     if (!videoRef.current) return;
+
+//     setCapturingPanorama(true);
+//     setPanoramaProgress(0);
+
+//     const steps = 6; // number of frames (adjust for smoother pano)
+//     const capturedCanvases = [];
+
+//     for (let i = 0; i < steps; i++) {
+//       // rotate slightly each step
+//       // await sendMotorCommand("rRight", 80);
+//       await new Promise((res) => setTimeout(res, 1200)); // wait rotation + stabilization
+
+//       // capture frame
+//       const canvas = document.createElement("canvas");
+//       const video = videoRef.current;
+//       canvas.width = video.videoWidth;
+//       canvas.height = video.videoHeight;
+//       const ctx = canvas.getContext("2d");
+//       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+//       capturedCanvases.push(canvas);
+
+//       setPanoramaProgress(Math.round(((i + 1) / steps) * 100));
+//     }
+
+//     // Merge all frames side by side
+//     const panoWidth = capturedCanvases.reduce((acc, c) => acc + c.width, 0);
+//     const panoHeight = capturedCanvases[0].height;
+//     const panoCanvas = document.createElement("canvas");
+//     panoCanvas.width = panoWidth;
+//     panoCanvas.height = panoHeight;
+//     const panoCtx = panoCanvas.getContext("2d");
+
+//     let offsetX = 0;
+//     capturedCanvases.forEach((c) => {
+//       panoCtx.drawImage(c, offsetX, 0);
+//       offsetX += c.width;
+//     });
+
+//     // Upload final panorama
+//     panoCanvas.toBlob(async (blob) => {
+//       const formData = new FormData();
+//       formData.append("file", blob, `panorama_${Date.now()}.png`);
+//       await fetch("/api/save-image", { method: "POST", body: formData });
+//       fetchMedia();
+//     }, "image/png");
+
+//     setCapturingPanorama(false);
+//     setPanoramaProgress(0);
+//   };
+
+//   const startRecording = () => {
+//     const stream = videoRef.current.srcObject;
+//     const recorder = new MediaRecorder(stream);
+//     mediaRecorderRef.current = recorder;
+//     recordedChunksRef.current = [];
+
+//     recorder.ondataavailable = (e) =>
+//       e.data.size > 0 && recordedChunksRef.current.push(e.data);
+//     recorder.onstop = async () => {
+//       const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
+//       const formData = new FormData();
+//       formData.append("file", blob, `recording_${Date.now()}.webm`);
+//       await fetch("/api/save-video", { method: "POST", body: formData });
+//       fetchMedia();
+//     };
+
+//     recorder.start();
+//     setRecording(true);
+//   };
+
+//   const stopRecording = () => {
+//     mediaRecorderRef.current?.stop();
+//     setRecording(false);
+//   };
+
+//   const handleDirectionClick = (direction) => {
+//     console.log(`Sending Base Control ESP32 command: ${direction}`);
+
+//     sendMotorCommand(direction, 100)
+//       .then((response) => {
+//         console.log(`Base Control ESP32 response: ${response}`);
+//       })
+//       .catch((error) => {
+//         console.error("Base Control command failed:", error);
+//       });
+//   };
+
+//   const handleButtonDown = (direction) => {
+//     handleDirectionClick(direction);
+//   };
+
+//   const handleButtonUp = () => {
+//     handleDirectionClick("stop");
+//   };
+
+//   const openImageModal = (imageSrc) => {
+//     setSelectedImage(imageSrc);
+//     setShowImageModal(true);
+//   };
+
+//   const closeImageModal = () => {
+//     setShowImageModal(false);
+//     setSelectedImage("");
+//   };
+
+//   const openVideoModal = (videoSrc) => {
+//     setSelectedVideo(videoSrc);
+//     setShowVideoModal(true);
+//     setVideoPlaying(false);
+//   };
+
+//   const closeVideoModal = () => {
+//     setShowVideoModal(false);
+//     setSelectedVideo("");
+//     setVideoPlaying(false);
+//     if (modalVideoRef.current) {
+//       modalVideoRef.current.pause();
+//     }
+//   };
+
+//   const toggleVideoPlayback = () => {
+//     if (modalVideoRef.current) {
+//       if (videoPlaying) {
+//         modalVideoRef.current.pause();
+//       } else {
+//         modalVideoRef.current.play();
+//       }
+//       setVideoPlaying(!videoPlaying);
+//     }
+//   };
+
+//   const fastForwardVideo = () => {
+//     if (modalVideoRef.current) {
+//       modalVideoRef.current.currentTime += 10;
+//     }
+//   };
+
+//   const rewindVideo = () => {
+//     if (modalVideoRef.current) {
+//       modalVideoRef.current.currentTime -= 10;
+//     }
+//   };
+
+//   // BodyPix tracking
+//   useEffect(() => {
+//     let net, intervalId;
+//     const trackMovement = async () => {
+//       if (!videoRef.current || videoRef.current.readyState < 2 || !net) return;
+//       const segmentation = await net.segmentPerson(videoRef.current);
+//       const mask = bodyPix.toMask(segmentation);
+//       const xCoords = [];
+//       for (let y = 0; y < mask.height; y++) {
+//         for (let x = 0; x < mask.width; x++) {
+//           if (mask.data[(y * mask.width + x) * 4 + 3] > 0) xCoords.push(x);
+//         }
+//       }
+//       if (xCoords.length > 0) {
+//         const currentX = xCoords.reduce((a, b) => a + b) / xCoords.length;
+//         if (previousX.current !== null) {
+//           const dx = currentX - previousX.current;
+//           setDirection(
+//             dx > 10 ? "➡️ Right" : dx < -10 ? "⬅️ Left" : "⏹️ Centered"
+//           );
+//         }
+//         previousX.current = currentX;
+//       }
+//     };
+
+//     const load = async () => {
+//       net = await bodyPix.load();
+//       intervalId = setInterval(trackMovement, 500);
+//     };
+//     load();
+
+//     return () => clearInterval(intervalId);
+//   }, []);
+
+//   return (
+//     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 px-4 py-6 font-sans text-slate-800">
+//       <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
+//         <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-5 text-center">
+//           <h1 className="text-2xl font-bold">📹 Tripod Control Panel</h1>
+//           <p className="text-blue-100 text-sm">Live Stream & Full Controls</p>
+//         </div>
+
+//         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 p-5">
+//           {/* Video Stream Section */}
+//           <div className="lg:col-span-1 space-y-4">
+//             <div
+//               className={`text-center py-2 rounded-lg text-sm font-medium ${
+//                 connected
+//                   ? "bg-green-100 text-green-800"
+//                   : "bg-red-100 text-red-800"
+//               }`}
+//             >
+//               {connected ? "🟢 Connected" : "🔴 Not Connected"}
+//             </div>
+
+//             <div className="aspect-video bg-black rounded-xl overflow-hidden">
+//               <video
+//                 ref={videoRef}
+//                 autoPlay
+//                 playsInline
+//                 muted
+//                 className="w-full h-full object-cover"
+//               />
+//             </div>
+
+//             <div className="text-center py-2 text-sm font-semibold text-slate-700">
+//               🧭 {direction}
+//             </div>
+
+//             <div className="grid grid-cols-4 gap-2">
+//               {!connected ? (
+//                 <button
+//                   onClick={initConnection}
+//                   className="col-span-4 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded text-sm font-medium transition"
+//                 >
+//                   🔌 Connect
+//                 </button>
+//               ) : (
+//                 <>
+//                   <button
+//                     onClick={captureImage}
+//                     className="bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded text-sm font-medium transition"
+//                     title="Capture Photo"
+//                   >
+//                     📸
+//                   </button>
+//                   <button
+//                     onClick={capturePanorama}
+//                     disabled={capturingPanorama}
+//                     className={`${
+//                       capturingPanorama
+//                         ? "bg-purple-600"
+//                         : "bg-purple-600 hover:bg-purple-700"
+//                     } text-white py-2 rounded text-sm font-medium transition flex items-center justify-center`}
+//                     title="Capture Panorama"
+//                   >
+//                     {capturingPanorama ? (
+//                       <span className="text-xs">{panoramaProgress}%</span>
+//                     ) : (
+//                       <Camera size={18} />
+//                     )}
+//                   </button>
+//                   {!recording ? (
+//                     <button
+//                       onClick={startRecording}
+//                       className="bg-amber-500 hover:bg-amber-600 text-white py-2 rounded text-sm font-medium transition"
+//                       title="Start Recording"
+//                     >
+//                       ⏺️
+//                     </button>
+//                   ) : (
+//                     <button
+//                       onClick={stopRecording}
+//                       className="bg-red-600 hover:bg-red-700 text-white py-2 rounded text-sm font-medium transition"
+//                       title="Stop Recording"
+//                     >
+//                       ⏹️
+//                     </button>
+//                   )}
+//                   <button
+//                     onClick={() => sendMotorCommand("reboot")}
+//                     className="bg-gray-500 hover:bg-gray-600 text-white py-2 rounded text-sm font-medium transition"
+//                     title="Reboot System"
+//                   >
+//                     🔁
+//                   </button>
+//                 </>
+//               )}
+//             </div>
+//           </div>
+
+//           {/* Media Gallery (Mini) */}
+//           <div>
+//             <h3 className="text-sm font-semibold mb-2 text-center">📷 Media</h3>
+//             <div className="flex gap-1 overflow-x-auto py-1 max-w-full">
+//               {images.map((img, i) => (
+//                 <img
+//                   key={i}
+//                   src={img}
+//                   alt="img"
+//                   className="w-16 h-16 object-cover rounded border flex-shrink-0 cursor-pointer hover:opacity-80 transition"
+//                   onClick={() => openImageModal(img)}
+//                 />
+//               ))}
+//               {videos.map((vid, i) => (
+//                 <div
+//                   key={i}
+//                   className="relative w-16 h-16 cursor-pointer hover:opacity-80 transition"
+//                   onClick={() => openVideoModal(vid)}
+//                 >
+//                   <video
+//                     src={vid}
+//                     className="w-full h-full object-cover rounded border flex-shrink-0"
+//                   />
+//                   <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded">
+//                     <Play className="text-white" size={16} />
+//                   </div>
+//                 </div>
+//               ))}
+//             </div>
+//           </div>
+
+//           {/* Controls Section */}
+//           <div className="lg:col-span-3 space-y-5">
+//             {/* Omnidirectional Base */}
+//             <div className="bg-slate-50 p-4 rounded-xl border">
+//               <h3 className="text-center font-semibold text-slate-700 mb-3">
+//                 🔄 Omnidirectional Base
+//               </h3>
+//               <div className="grid grid-cols-3 gap-3 max-w-48 mx-auto">
+//                 {/* Top row */}
+//                 <div
+//                   className="bg-blue-600 hover:bg-blue-700 text-white text-xl rounded-lg py-3 flex items-center justify-center cursor-pointer transition-colors select-none"
+//                   onMouseDown={() => handleButtonDown("rLeft")}
+//                   onMouseUp={handleButtonUp}
+//                   onTouchStart={() => handleButtonDown("rLeft")}
+//                   onTouchEnd={handleButtonUp}
+//                   title="Rotate Left"
+//                 >
+//                   <RotateCcw size={24} />
+//                 </div>
+//                 <div
+//                   className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg py-3 flex items-center justify-center cursor-pointer transition-colors select-none"
+//                   onMouseDown={() => handleButtonDown("forward")}
+//                   onMouseUp={handleButtonUp}
+//                   onTouchStart={() => handleButtonDown("forward")}
+//                   onTouchEnd={handleButtonUp}
+//                   title="Move Forward"
+//                 >
+//                   <ArrowUp size={28} />
+//                 </div>
+//                 <div
+//                   className="bg-blue-600 hover:bg-blue-700 text-white text-xl rounded-lg py-3 flex items-center justify-center cursor-pointer transition-colors select-none"
+//                   onMouseDown={() => handleButtonDown("rRight")}
+//                   onMouseUp={handleButtonUp}
+//                   onTouchStart={() => handleButtonDown("rRight")}
+//                   onTouchEnd={handleButtonUp}
+//                   title="Rotate Right"
+//                 >
+//                   <RotateCw size={24} />
+//                 </div>
+
+//                 {/* Middle row */}
+//                 <div
+//                   className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg py-3 flex items-center justify-center cursor-pointer transition-colors select-none"
+//                   onMouseDown={() => handleButtonDown("left")}
+//                   onMouseUp={handleButtonUp}
+//                   onTouchStart={() => handleButtonDown("left")}
+//                   onTouchEnd={handleButtonUp}
+//                   title="Strafe Left"
+//                 >
+//                   <ArrowLeft size={28} />
+//                 </div>
+//                 <div
+//                   className="bg-gray-500 text-white text-xl rounded-lg py-3 flex items-center justify-center"
+//                   title="Base Center"
+//                 >
+//                   <span className="w-2 h-2 rounded-full bg-white"></span>
+//                 </div>
+//                 <div
+//                   className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg py-3 flex items-center justify-center cursor-pointer transition-colors select-none"
+//                   onMouseDown={() => handleButtonDown("right")}
+//                   onMouseUp={handleButtonUp}
+//                   onTouchStart={() => handleButtonDown("right")}
+//                   onTouchEnd={handleButtonUp}
+//                   title="Strafe Right"
+//                 >
+//                   <ArrowRight size={28} />
+//                 </div>
+
+//                 {/* Bottom row */}
+//                 <div></div>
+//                 <div
+//                   className="bg-blue-600 hover:bg-blue-700 text-white text-2xl rounded-lg py-3 flex items-center justify-center cursor-pointer transition-colors select-none"
+//                   onMouseDown={() => handleButtonDown("backward")}
+//                   onMouseUp={handleButtonUp}
+//                   onTouchStart={() => handleButtonDown("backward")}
+//                   onTouchEnd={handleButtonUp}
+//                   title="Move Backward"
+//                 >
+//                   <ArrowDown size={28} />
+//                 </div>
+//                 <div></div>
+//               </div>
+
+//               <div className="mt-4 text-center">
+//                 <p className="text-xs text-gray-500">
+//                   3-Motor Omnidirectional Base Control
+//                 </p>
+//               </div>
+//             </div>
+
+//             {/* Two Column Layout for Additional Controls */}
+//             <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+//               {/* Height Controls */}
+//               <div className="bg-slate-50 p-4 rounded-xl border">
+//                 <h3 className="text-center font-semibold text-slate-700 mb-3">
+//                   📏 Height Control (Motors)
+//                 </h3>
+//                 <div className="grid grid-cols-4 gap-3 text-center">
+//                   {["m1", "m2", "m3"].map((motor, i) => (
+//                     <div key={motor}>
+//                       <div className="font-medium text-slate-700">{motor}</div>
+//                       <button
+//                         onClick={() => sendActuatorCommand(motor, "up")}
+//                         className="w-full bg-blue-600 text-white text-lg rounded py-2 mt-1"
+//                       >
+//                         ▲
+//                       </button>
+//                       <button
+//                         onClick={() => sendActuatorCommand(motor, "down")}
+//                         className="w-full bg-blue-600 text-white text-lg rounded py-2 mt-1"
+//                       >
+//                         ▼
+//                       </button>
+//                     </div>
+//                   ))}
+//                   <div className="space-y-2">
+//                     <button
+//                       onClick={() => sendActuatorCommand("all", "up")}
+//                       className="w-full bg-green-600 text-white text-sm py-2 rounded"
+//                     >
+//                       All Up
+//                     </button>
+//                     <button
+//                       onClick={() => sendActuatorCommand("all", "down")}
+//                       className="w-full bg-red-600 text-white text-sm py-2 rounded"
+//                     >
+//                       All Down
+//                     </button>
+//                   </div>
+//                 </div>
+//               </div>
+
+//               {/* Stabilization */}
+//               <div className="bg-slate-50 p-4 rounded-xl border">
+//                 <h3 className="text-center font-semibold text-slate-700 mb-3">
+//                   ⚖️ Stabilization
+//                 </h3>
+//                 <div className="flex flex-col sm:flex-row gap-3">
+//                   <button
+//                     onClick={() => {
+//                       setStabilizationActive(true);
+//                       sendActuatorCommand("stabilize", "start");
+//                     }}
+//                     className={`flex-1 py-3 rounded font-medium text-white transition ${
+//                       stabilizationActive
+//                         ? "bg-green-600"
+//                         : "bg-gray-400 hover:bg-gray-500"
+//                     }`}
+//                   >
+//                     Start Stabilize
+//                   </button>
+//                   <button
+//                     onClick={() => {
+//                       setStabilizationActive(false);
+//                       sendActuatorCommand("stabilize", "stop");
+//                     }}
+//                     className={`flex-1 py-3 rounded font-medium text-white transition ${
+//                       !stabilizationActive
+//                         ? "bg-red-600"
+//                         : "bg-gray-400 hover:bg-gray-500"
+//                     }`}
+//                   >
+//                     Stop Stabilize
+//                   </button>
+//                 </div>
+//               </div>
+
+//               {/* Obstacle Detection */}
+//               <div className="bg-slate-50 p-4 rounded-xl border">
+//                 <h3 className="text-center font-semibold text-slate-700 mb-3">
+//                   🚨 Obstacle Detection
+//                 </h3>
+//                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+//                   {Object.entries(obstacleSignals).map(([dir, active]) => (
+//                     <div
+//                       key={dir}
+//                       className={`p-3 rounded-lg text-center font-medium text-white ${
+//                         active ? "bg-green-600" : "bg-gray-500"
+//                       }`}
+//                     >
+//                       {dir.charAt(0).toUpperCase() + dir.slice(1)}
+//                       <div className="text-xs mt-1">
+//                         {active ? "Detected" : "Clear"}
+//                       </div>
+//                     </div>
+//                   ))}
+//                 </div>
+//               </div>
+//             </div>
+//           </div>
+//         </div>
+//       </div>
+
+//       {/* Image Modal */}
+//       {/* {showImageModal && (
+//         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+//           <div className="relative max-w-4xl max-h-full">
+//             <button
+//               onClick={closeImageModal}
+//               className="absolute -top-10 right-0 text-white hover:text-gray-300 transition"
+//             >
+//               <X size={32} />
+//             </button>
+//             <img
+//               src={selectedImage}
+//               alt="Full size"
+//               className="max-w-full max-h-screen object-contain rounded-lg"
+//             />
+//           </div>
+//         </div>
+//       )} */}
+//       {/* Image Modal */}
+//       {showImageModal && (
+//         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+//           <div className="relative max-w-4xl max-h-full">
+//             <button
+//               onClick={closeImageModal}
+//               className="absolute -top-10 right-0 text-white hover:text-gray-300 transition"
+//             >
+//               <X size={32} />
+//             </button>
+//             <img
+//               src={selectedImage}
+//               alt="Full size"
+//               className="max-w-full max-h-screen object-contain rounded-lg"
+//             />
+
+//             {/* Action Buttons */}
+//             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-4 bg-black bg-opacity-60 px-4 py-2 rounded-lg">
+//               {/* Download Button */}
+//               <a
+//                 href={selectedImage}
+//                 download={`image_${Date.now()}.png`}
+//                 className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded text-sm font-medium transition"
+//               >
+//                 ⬇️ Download
+//               </a>
+
+//               {/* Delete Button */}
+//               <button
+//                 onClick={async () => {
+//                   await fetch("/api/delete-image", {
+//                     method: "POST",
+//                     headers: { "Content-Type": "application/json" },
+//                     body: JSON.stringify({ file: selectedImage }),
+//                   });
+//                   fetchMedia();
+//                   closeImageModal();
+//                 }}
+//                 className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm font-medium transition"
+//               >
+//                 🗑️ Delete
+//               </button>
+//             </div>
+//           </div>
+//         </div>
+//       )}
+
+//       {/* Video Modal */}
+//       {showVideoModal && (
+//         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+//           <div className="relative max-w-4xl max-h-full">
+//             <button
+//               onClick={closeVideoModal}
+//               className="absolute -top-10 right-0 text-white hover:text-gray-300 transition"
+//             >
+//               <X size={32} />
+//             </button>
+//             <div className="relative">
+//               <video
+//                 ref={modalVideoRef}
+//                 src={selectedVideo}
+//                 className="max-w-full max-h-screen object-contain rounded-lg"
+//                 onPlay={() => setVideoPlaying(true)}
+//                 onPause={() => setVideoPlaying(false)}
+//               />
+//               <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-3 bg-black bg-opacity-50 rounded-lg p-3">
+//                 <button
+//                   onClick={rewindVideo}
+//                   className="text-white hover:text-gray-300 transition"
+//                   title="Rewind 10s"
+//                 >
+//                   <Rewind size={24} />
+//                 </button>
+//                 <button
+//                   onClick={toggleVideoPlayback}
+//                   className="text-white hover:text-gray-300 transition"
+//                   title={videoPlaying ? "Pause" : "Play"}
+//                 >
+//                   {videoPlaying ? <Pause size={24} /> : <Play size={24} />}
+//                 </button>
+//                 <button
+//                   onClick={fastForwardVideo}
+//                   className="text-white hover:text-gray-300 transition"
+//                   title="Fast Forward 10s"
+//                 >
+//                   <FastForward size={24} />
+//                 </button>
+//               </div>
+//             </div>
+//           </div>
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
+
 "use client";
 import { useEffect, useRef, useState } from "react";
 import * as bodyPix from "@tensorflow-models/body-pix";
@@ -3673,8 +4412,22 @@ import {
   Rewind,
   Camera,
 } from "lucide-react";
-import { sendMotorCommand } from "@/src/services/esp32Api";
-import { sendActuatorCommand } from "@/src/services/actuator";
+
+// Mock API functions for demo
+const sendMotorCommand = async (command, value) => {
+  console.log(`Motor command: ${command}, value: ${value}`);
+  return Promise.resolve("OK");
+};
+
+const sendActuatorCommand = async (motor, direction) => {
+  console.log(`Actuator command: ${motor}, direction: ${direction}`);
+  return Promise.resolve("OK");
+};
+
+const sendPanTiltCommand = async (axis, direction) => {
+  console.log(`Pan/Tilt command: ${axis}, direction: ${direction}`);
+  return Promise.resolve("OK");
+};
 
 export default function DesktopViewPage() {
   const videoRef = useRef(null);
@@ -3754,14 +4507,9 @@ export default function DesktopViewPage() {
   }, []);
 
   const fetchMedia = async () => {
-    const imgRes = await fetch("/api/list-images");
-    const vidRes = await fetch("/api/list-videos");
-    const imgData = await imgRes.json();
-    console.log("imageData", imgData);
-
-    const vidData = await vidRes.json();
-    setImages(imgData.files);
-    setVideos(vidData.files);
+    // Mock data for demo
+    setImages(["/api/placeholder/400/300", "/api/placeholder/400/300"]);
+    setVideos(["/api/placeholder/400/300", "/api/placeholder/400/300"]);
   };
 
   const captureImage = () => {
@@ -3874,6 +4622,29 @@ export default function DesktopViewPage() {
 
   const handleButtonUp = () => {
     handleDirectionClick("stop");
+  };
+
+  // Pan/Tilt control handlers
+  const handlePanTiltDown = (axis, direction) => {
+    console.log(`Sending Pan/Tilt command: ${axis} ${direction}`);
+    sendPanTiltCommand(axis, direction)
+      .then((response) => {
+        console.log(`Pan/Tilt response: ${response}`);
+      })
+      .catch((error) => {
+        console.error("Pan/Tilt command failed:", error);
+      });
+  };
+
+  const handlePanTiltUp = () => {
+    console.log("Stopping Pan/Tilt movement");
+    sendPanTiltCommand("stop", "stop")
+      .then((response) => {
+        console.log(`Pan/Tilt stop response: ${response}`);
+      })
+      .catch((error) => {
+        console.error("Pan/Tilt stop command failed:", error);
+      });
   };
 
   const openImageModal = (imageSrc) => {
@@ -4060,24 +4831,21 @@ export default function DesktopViewPage() {
             <h3 className="text-sm font-semibold mb-2 text-center">📷 Media</h3>
             <div className="flex gap-1 overflow-x-auto py-1 max-w-full">
               {images.map((img, i) => (
-                <img
+                <div
                   key={i}
-                  src={img}
-                  alt="img"
-                  className="w-16 h-16 object-cover rounded border flex-shrink-0 cursor-pointer hover:opacity-80 transition"
+                  className="w-16 h-16 bg-gray-200 rounded border flex-shrink-0 cursor-pointer hover:opacity-80 transition flex items-center justify-center"
                   onClick={() => openImageModal(img)}
-                />
+                >
+                  <span className="text-xs text-gray-500">IMG</span>
+                </div>
               ))}
               {videos.map((vid, i) => (
                 <div
                   key={i}
-                  className="relative w-16 h-16 cursor-pointer hover:opacity-80 transition"
+                  className="relative w-16 h-16 cursor-pointer hover:opacity-80 transition bg-gray-200 rounded border flex items-center justify-center"
                   onClick={() => openVideoModal(vid)}
                 >
-                  <video
-                    src={vid}
-                    className="w-full h-full object-cover rounded border flex-shrink-0"
-                  />
+                  <span className="text-xs text-gray-500">VID</span>
                   <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded">
                     <Play className="text-white" size={16} />
                   </div>
@@ -4176,8 +4944,97 @@ export default function DesktopViewPage() {
               </div>
             </div>
 
-            {/* Two Column Layout for Additional Controls */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+            {/* Pan/Tilt Controller */}
+            <div className="bg-slate-50 p-4 rounded-xl border">
+              <h3 className="text-center font-semibold text-slate-700 mb-3">
+                📹 Pan/Tilt Controller
+              </h3>
+              <div className="flex justify-center gap-8">
+                {/* Pan Controls */}
+                <div className="flex flex-col items-center">
+                  <h4 className="text-sm font-medium text-slate-600 mb-2">
+                    Pan
+                  </h4>
+                  <div className="flex gap-2">
+                    <div
+                      className="bg-purple-600 hover:bg-purple-700 text-white rounded-lg py-3 px-4 flex items-center justify-center cursor-pointer transition-colors select-none"
+                      onMouseDown={() => handlePanTiltDown("pan", "left")}
+                      onMouseUp={handlePanTiltUp}
+                      onTouchStart={() => handlePanTiltDown("pan", "left")}
+                      onTouchEnd={handlePanTiltUp}
+                      title="Pan Left"
+                    >
+                      <ArrowLeft size={24} />
+                    </div>
+                    <div
+                      className="bg-purple-600 hover:bg-purple-700 text-white rounded-lg py-3 px-4 flex items-center justify-center cursor-pointer transition-colors select-none"
+                      onMouseDown={() => handlePanTiltDown("pan", "right")}
+                      onMouseUp={handlePanTiltUp}
+                      onTouchStart={() => handlePanTiltDown("pan", "right")}
+                      onTouchEnd={handlePanTiltUp}
+                      title="Pan Right"
+                    >
+                      <ArrowRight size={24} />
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-2">{panValue}°</div>
+                </div>
+
+                {/* Tilt Controls */}
+                <div className="flex flex-col items-center">
+                  <h4 className="text-sm font-medium text-slate-600 mb-2">
+                    Tilt
+                  </h4>
+                  <div className="flex flex-col gap-2">
+                    <div
+                      className="bg-purple-600 hover:bg-purple-700 text-white rounded-lg py-3 px-4 flex items-center justify-center cursor-pointer transition-colors select-none"
+                      onMouseDown={() => handlePanTiltDown("tilt", "up")}
+                      onMouseUp={handlePanTiltUp}
+                      onTouchStart={() => handlePanTiltDown("tilt", "up")}
+                      onTouchEnd={handlePanTiltUp}
+                      title="Tilt Up"
+                    >
+                      <ArrowUp size={24} />
+                    </div>
+                    <div
+                      className="bg-purple-600 hover:bg-purple-700 text-white rounded-lg py-3 px-4 flex items-center justify-center cursor-pointer transition-colors select-none"
+                      onMouseDown={() => handlePanTiltDown("tilt", "down")}
+                      onMouseUp={handlePanTiltUp}
+                      onTouchStart={() => handlePanTiltDown("tilt", "down")}
+                      onTouchEnd={handlePanTiltUp}
+                      title="Tilt Down"
+                    >
+                      <ArrowDown size={24} />
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-2">{tiltValue}°</div>
+                </div>
+
+                {/* Center/Home Button */}
+                <div className="flex flex-col items-center justify-center">
+                  <button
+                    onClick={() => {
+                      sendPanTiltCommand("center", "home");
+                      setPanValue(90);
+                      setTiltValue(90);
+                    }}
+                    className="bg-gray-600 hover:bg-gray-700 text-white rounded-lg py-3 px-4 text-sm font-medium transition"
+                    title="Center Pan/Tilt"
+                  >
+                    🎯 Center
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-4 text-center">
+                <p className="text-xs text-gray-500">
+                  Camera Pan/Tilt Servo Control
+                </p>
+              </div>
+            </div>
+
+            {/* Three Column Layout for Additional Controls */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
               {/* Height Controls */}
               <div className="bg-slate-50 p-4 rounded-xl border">
                 <h3 className="text-center font-semibold text-slate-700 mb-3">
@@ -4223,13 +5080,13 @@ export default function DesktopViewPage() {
                 <h3 className="text-center font-semibold text-slate-700 mb-3">
                   ⚖️ Stabilization
                 </h3>
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-col gap-3">
                   <button
                     onClick={() => {
                       setStabilizationActive(true);
                       sendActuatorCommand("stabilize", "start");
                     }}
-                    className={`flex-1 py-3 rounded font-medium text-white transition ${
+                    className={`py-3 rounded font-medium text-white transition ${
                       stabilizationActive
                         ? "bg-green-600"
                         : "bg-gray-400 hover:bg-gray-500"
@@ -4242,7 +5099,7 @@ export default function DesktopViewPage() {
                       setStabilizationActive(false);
                       sendActuatorCommand("stabilize", "stop");
                     }}
-                    className={`flex-1 py-3 rounded font-medium text-white transition ${
+                    className={`py-3 rounded font-medium text-white transition ${
                       !stabilizationActive
                         ? "bg-red-600"
                         : "bg-gray-400 hover:bg-gray-500"
@@ -4258,7 +5115,7 @@ export default function DesktopViewPage() {
                 <h3 className="text-center font-semibold text-slate-700 mb-3">
                   🚨 Obstacle Detection
                 </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   {Object.entries(obstacleSignals).map(([dir, active]) => (
                     <div
                       key={dir}
@@ -4280,24 +5137,6 @@ export default function DesktopViewPage() {
       </div>
 
       {/* Image Modal */}
-      {/* {showImageModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-          <div className="relative max-w-4xl max-h-full">
-            <button
-              onClick={closeImageModal}
-              className="absolute -top-10 right-0 text-white hover:text-gray-300 transition"
-            >
-              <X size={32} />
-            </button>
-            <img
-              src={selectedImage}
-              alt="Full size"
-              className="max-w-full max-h-screen object-contain rounded-lg"
-            />
-          </div>
-        </div>
-      )} */}
-      {/* Image Modal */}
       {showImageModal && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
           <div className="relative max-w-4xl max-h-full">
@@ -4307,11 +5146,9 @@ export default function DesktopViewPage() {
             >
               <X size={32} />
             </button>
-            <img
-              src={selectedImage}
-              alt="Full size"
-              className="max-w-full max-h-screen object-contain rounded-lg"
-            />
+            <div className="w-96 h-64 bg-gray-200 rounded-lg flex items-center justify-center">
+              <span className="text-gray-500">Image Preview</span>
+            </div>
 
             {/* Action Buttons */}
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-4 bg-black bg-opacity-60 px-4 py-2 rounded-lg">
@@ -4355,13 +5192,9 @@ export default function DesktopViewPage() {
               <X size={32} />
             </button>
             <div className="relative">
-              <video
-                ref={modalVideoRef}
-                src={selectedVideo}
-                className="max-w-full max-h-screen object-contain rounded-lg"
-                onPlay={() => setVideoPlaying(true)}
-                onPause={() => setVideoPlaying(false)}
-              />
+              <div className="w-96 h-64 bg-gray-200 rounded-lg flex items-center justify-center">
+                <span className="text-gray-500">Video Preview</span>
+              </div>
               <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-3 bg-black bg-opacity-50 rounded-lg p-3">
                 <button
                   onClick={rewindVideo}
