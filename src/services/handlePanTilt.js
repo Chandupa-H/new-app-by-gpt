@@ -32,7 +32,7 @@ export async function POST(req) {
     const { cmd, value } = await req.json();
 
     // Change this to your ESP32 IP printed in Serial Monitor
-    const ESP32_URL = "http://172.25.249.124/cmd";
+    const ESP32_URL = "http://10.200.200.124/cmd";
 
     const url = `${ESP32_URL}?cmd=${cmd}&value=${value || ""}`;
     const espRes = await fetch(url);
