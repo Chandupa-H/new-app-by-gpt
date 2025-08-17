@@ -1,29 +1,52 @@
-// src/services/esp32Api.js
+// // src/services/esp32Api.js
 
-// HARD-CODED ESP32 IP
-const ESP32_IP = "172.25.249.124"; // <-- Change to your ESP32's IP
-const BASE_URL = `http://${ESP32_IP}`;
+// // HARD-CODED ESP32 IP
+// const ESP32_IP = "172.25.249.124"; // <-- Change to your ESP32's IP
+// const BASE_URL = `http://${ESP32_IP}`;
 
-export const sendESP32Command = async (cmd, value = "") => {
+// export const sendESP32Command = async (cmd, value = "") => {
+//   try {
+//     console.log(`Sending command to ESP32: ${cmd}, value: ${value}`);
+
+//     // Construct query string
+//     const url = `${BASE_URL}/cmd?cmd=${encodeURIComponent(cmd)}${
+//       value !== "" ? `&value=${encodeURIComponent(value)}` : ""
+//     }`;
+
+//     const response = await fetch(url, {
+//       method: "GET",
+//     });
+
+//     if (!response.ok) {
+//       throw new Error(`Failed to send command: ${response.statusText}`);
+//     }
+
+//     return await response.text(); // ESP32 responds with "OK"
+//   } catch (error) {
+//     console.error("Error sending command to ESP32:", error);
+//     throw error;
+//   }
+// };
+export async function POST(req) {
   try {
-    console.log(`Sending command to ESP32: ${cmd}, value: ${value}`);
+    const { cmd, value } = await req.json();
 
-    // Construct query string
-    const url = `${BASE_URL}/cmd?cmd=${encodeURIComponent(cmd)}${
-      value !== "" ? `&value=${encodeURIComponent(value)}` : ""
-    }`;
+    // Change this to your ESP32 IP printed in Serial Monitor
+    const ESP32_URL = "http://172.25.249.124/cmd";
 
-    const response = await fetch(url, {
-      method: "GET",
+    const url = `${ESP32_URL}?cmd=${cmd}&value=${value || ""}`;
+    const espRes = await fetch(url);
+
+    const text = await espRes.text();
+
+    return new Response(JSON.stringify({ ok: true, result: text }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
     });
-
-    if (!response.ok) {
-      throw new Error(`Failed to send command: ${response.statusText}`);
-    }
-
-    return await response.text(); // ESP32 responds with "OK"
-  } catch (error) {
-    console.error("Error sending command to ESP32:", error);
-    throw error;
+  } catch (err) {
+    return new Response(JSON.stringify({ ok: false, error: err.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
-};
+}

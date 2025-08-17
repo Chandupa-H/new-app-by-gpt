@@ -3711,6 +3711,16 @@ export default function DesktopViewPage() {
   const [selectedVideo, setSelectedVideo] = useState("");
   const [videoPlaying, setVideoPlaying] = useState(false);
 
+  const [speed, setSpeed] = useState(30);
+
+  async function sendCommand(cmd, value = "") {
+    await fetch("/api/pantilt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cmd, value }),
+    });
+  }
+
   // images ? console.log(images) : null;
 
   // =========================
@@ -4304,7 +4314,7 @@ export default function DesktopViewPage() {
                   📹 Pan/Tilt Controller
                 </h3>
                 <div className="flex justify-center gap-8">
-                  {/* Pan Controls */}
+                  Pan Controls
                   <div className="flex flex-col items-center">
                     <h4 className="text-sm font-medium text-slate-600 mb-2">
                       Pan
@@ -4335,7 +4345,93 @@ export default function DesktopViewPage() {
                       {panValue}°
                     </div>
                   </div>
+                  {/* new pan tilt */}
+                  <div className="p-6 space-y-6">
+                    <h2 className="text-xl font-bold">
+                      Stepper + Servo Control
+                    </h2>
 
+                    {/* Stepper */}
+                    <div>
+                      <h3 className="font-semibold">Stepper Motor</h3>
+                      <button
+                        onMouseDown={() => sendCommand("stepper_up")}
+                        onMouseUp={() => sendCommand("stepper_stop")}
+                        onTouchStart={() => sendCommand("stepper_up")}
+                        onTouchEnd={() => sendCommand("stepper_stop")}
+                        className="px-4 py-2 bg-blue-500 text-white rounded m-2"
+                      >
+                        ⬆ UP
+                      </button>
+                      <button
+                        onMouseDown={() => sendCommand("stepper_down")}
+                        onMouseUp={() => sendCommand("stepper_stop")}
+                        onTouchStart={() => sendCommand("stepper_down")}
+                        onTouchEnd={() => sendCommand("stepper_stop")}
+                        className="px-4 py-2 bg-blue-500 text-white rounded m-2"
+                      >
+                        ⬇ DOWN
+                      </button>
+                    </div>
+
+                    {/* Servo */}
+                    <div>
+                      <h3 className="font-semibold">Servo Motors (Pan/Tilt)</h3>
+                      <button
+                        onMouseDown={() => sendCommand("tilt_up")}
+                        onMouseUp={() => sendCommand("tilt_stop")}
+                        onTouchStart={() => sendCommand("tilt_up")}
+                        onTouchEnd={() => sendCommand("tilt_stop")}
+                        className="px-4 py-2 bg-green-500 text-white rounded m-2"
+                      >
+                        Tilt Up
+                      </button>
+                      <button
+                        onMouseDown={() => sendCommand("tilt_down")}
+                        onMouseUp={() => sendCommand("tilt_stop")}
+                        onTouchStart={() => sendCommand("tilt_down")}
+                        onTouchEnd={() => sendCommand("tilt_stop")}
+                        className="px-4 py-2 bg-green-500 text-white rounded m-2"
+                      >
+                        Tilt Down
+                      </button>
+                      <button
+                        onMouseDown={() => sendCommand("pan_left")}
+                        onMouseUp={() => sendCommand("pan_stop")}
+                        onTouchStart={() => sendCommand("pan_left")}
+                        onTouchEnd={() => sendCommand("pan_stop")}
+                        className="px-4 py-2 bg-purple-500 text-white rounded m-2"
+                      >
+                        Pan Left
+                      </button>
+                      <button
+                        onMouseDown={() => sendCommand("pan_right")}
+                        onMouseUp={() => sendCommand("pan_stop")}
+                        onTouchStart={() => sendCommand("pan_right")}
+                        onTouchEnd={() => sendCommand("pan_stop")}
+                        className="px-4 py-2 bg-purple-500 text-white rounded m-2"
+                      >
+                        Pan Right
+                      </button>
+                    </div>
+
+                    {/* Speed */}
+                    <div>
+                      <label>
+                        Servo Speed: <span>{speed}</span> ms
+                      </label>
+                      <input
+                        type="range"
+                        min="10"
+                        max="100"
+                        value={speed}
+                        onChange={(e) => {
+                          setSpeed(e.target.value);
+                          sendCommand("speed", e.target.value);
+                        }}
+                      />
+                    </div>
+                  </div>
                   {/* Tilt Controls */}
                   <div className="flex flex-col items-center">
                     <h4 className="text-sm font-medium text-slate-600 mb-2">
@@ -4367,7 +4463,6 @@ export default function DesktopViewPage() {
                       {tiltValue}°
                     </div>
                   </div>
-
                   {/* Center/Home Button */}
                   <div className="flex flex-col items-center justify-center">
                     <button
