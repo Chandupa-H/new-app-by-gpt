@@ -20,6 +20,7 @@ import { uploadToCloudinary } from "@/lib/upload/cloudinary";
 export async function POST(req) {
   const formData = await req.formData();
   const file = formData.get("file");
+  // console.log("file", file);
 
   if (!file) return NextResponse.json({ error: "No file" }, { status: 400 });
 
@@ -27,6 +28,8 @@ export async function POST(req) {
 
   try {
     const result = await uploadToCloudinary(buffer, "images", "image");
+    console.log("result", result);
+
     return NextResponse.json({ status: "success", url: result.secure_url });
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });

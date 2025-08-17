@@ -3757,6 +3757,8 @@ export default function DesktopViewPage() {
     const imgRes = await fetch("/api/list-images");
     const vidRes = await fetch("/api/list-videos");
     const imgData = await imgRes.json();
+    console.log("imageData", imgData);
+
     const vidData = await vidRes.json();
     setImages(imgData.files);
     setVideos(vidData.files);
@@ -4278,6 +4280,24 @@ export default function DesktopViewPage() {
       </div>
 
       {/* Image Modal */}
+      {/* {showImageModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="relative max-w-4xl max-h-full">
+            <button
+              onClick={closeImageModal}
+              className="absolute -top-10 right-0 text-white hover:text-gray-300 transition"
+            >
+              <X size={32} />
+            </button>
+            <img
+              src={selectedImage}
+              alt="Full size"
+              className="max-w-full max-h-screen object-contain rounded-lg"
+            />
+          </div>
+        </div>
+      )} */}
+      {/* Image Modal */}
       {showImageModal && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
           <div className="relative max-w-4xl max-h-full">
@@ -4292,6 +4312,34 @@ export default function DesktopViewPage() {
               alt="Full size"
               className="max-w-full max-h-screen object-contain rounded-lg"
             />
+
+            {/* Action Buttons */}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-4 bg-black bg-opacity-60 px-4 py-2 rounded-lg">
+              {/* Download Button */}
+              <a
+                href={selectedImage}
+                download={`image_${Date.now()}.png`}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded text-sm font-medium transition"
+              >
+                ⬇️ Download
+              </a>
+
+              {/* Delete Button */}
+              <button
+                onClick={async () => {
+                  await fetch("/api/delete-image", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ file: selectedImage }),
+                  });
+                  fetchMedia();
+                  closeImageModal();
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm font-medium transition"
+              >
+                🗑️ Delete
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import cloudinary from "cloudinary";
 
 cloudinary.v2.config({
-  cloud_name: "dwfqbpxfb",
-  api_key: "564997124141877",
-  api_secret: "A_1m_eF4Mqr90gBeRoUj4Ll4EsQ",
+  cloud_name: "dhhwnmj6e",
+  api_key: "588611752873226",
+  api_secret: "Y3AnxhGfc0wh3iTIlXS0HnORBOc",
 });
 
 export async function GET() {
@@ -15,7 +15,11 @@ export async function GET() {
       resource_type: "image",
     });
 
+    // console.log("result", result);
+
     const urls = result.resources.map((file) => file.secure_url);
+    console.log("urls", urls);
+
     return NextResponse.json({ files: urls });
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
