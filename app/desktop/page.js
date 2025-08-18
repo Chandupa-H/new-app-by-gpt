@@ -3721,6 +3721,19 @@ export default function DesktopViewPage() {
     });
   }
 
+  // const [speed, setSpeed] = useState(30);
+
+  // Change to your ESP32 IP (check Serial Monitor)
+  const ESP32_IP = "http://10.200.200.124";
+
+  const sendCommandpantilt = async (cmd, value = "") => {
+    try {
+      await fetch(`${ESP32_IP}/cmd?cmd=${cmd}&value=${value}`);
+    } catch (err) {
+      console.error("Error:", err);
+    }
+  };
+
   // images ? console.log(images) : null;
 
   // =========================
@@ -4309,180 +4322,74 @@ export default function DesktopViewPage() {
               </div>
 
               {/* Pan/Tilt Controller */}
-              <div className="bg-slate-50 p-4 rounded-xl border">
-                <h3 className="text-center font-semibold text-slate-700 mb-3">
-                  📹 Pan/Tilt Controller
-                </h3>
-                <div className="flex justify-center gap-8">
-                  Pan Controls
-                  <div className="flex flex-col items-center">
-                    <h4 className="text-sm font-medium text-slate-600 mb-2">
-                      Pan
-                    </h4>
-                    <div className="flex gap-2">
-                      <div
-                        className="bg-purple-600 hover:bg-purple-700 text-white rounded-lg py-3 px-4 flex items-center justify-center cursor-pointer transition-colors select-none"
-                        onMouseDown={() => handlePanTiltDown("pan", "left")}
-                        onMouseUp={handlePanTiltUp}
-                        onTouchStart={() => handlePanTiltDown("pan", "left")}
-                        onTouchEnd={handlePanTiltUp}
-                        title="Pan Left"
-                      >
-                        <ArrowLeft size={24} />
-                      </div>
-                      <div
-                        className="bg-purple-600 hover:bg-purple-700 text-white rounded-lg py-3 px-4 flex items-center justify-center cursor-pointer transition-colors select-none"
-                        onMouseDown={() => handlePanTiltDown("pan", "right")}
-                        onMouseUp={handlePanTiltUp}
-                        onTouchStart={() => handlePanTiltDown("pan", "right")}
-                        onTouchEnd={handlePanTiltUp}
-                        title="Pan Right"
-                      >
-                        <ArrowRight size={24} />
-                      </div>
-                    </div>
-                    <div className="text-xs text-gray-500 mt-2">
-                      {panValue}°
-                    </div>
-                  </div>
-                  {/* new pan tilt */}
-                  <div className="p-6 space-y-6">
-                    <h2 className="text-xl font-bold">
-                      Stepper + Servo Control
-                    </h2>
 
-                    {/* Stepper */}
-                    <div>
-                      <h3 className="font-semibold">Stepper Motor</h3>
-                      <button
-                        onMouseDown={() => sendCommand("stepper_up")}
-                        onMouseUp={() => sendCommand("stepper_stop")}
-                        onTouchStart={() => sendCommand("stepper_up")}
-                        onTouchEnd={() => sendCommand("stepper_stop")}
-                        className="px-4 py-2 bg-blue-500 text-white rounded m-2"
-                      >
-                        ⬆ UP
-                      </button>
-                      <button
-                        onMouseDown={() => sendCommand("stepper_down")}
-                        onMouseUp={() => sendCommand("stepper_stop")}
-                        onTouchStart={() => sendCommand("stepper_down")}
-                        onTouchEnd={() => sendCommand("stepper_stop")}
-                        className="px-4 py-2 bg-blue-500 text-white rounded m-2"
-                      >
-                        ⬇ DOWN
-                      </button>
-                    </div>
+              <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-6">
+                <h1 className="text-2xl font-bold mb-6">
+                  ESP32 Pan-Tilt Control
+                </h1>
 
-                    {/* Servo */}
-                    <div>
-                      <h3 className="font-semibold">Servo Motors (Pan/Tilt)</h3>
-                      <button
-                        onMouseDown={() => sendCommand("tilt_up")}
-                        onMouseUp={() => sendCommand("tilt_stop")}
-                        onTouchStart={() => sendCommand("tilt_up")}
-                        onTouchEnd={() => sendCommand("tilt_stop")}
-                        className="px-4 py-2 bg-green-500 text-white rounded m-2"
-                      >
-                        Tilt Up
-                      </button>
-                      <button
-                        onMouseDown={() => sendCommand("tilt_down")}
-                        onMouseUp={() => sendCommand("tilt_stop")}
-                        onTouchStart={() => sendCommand("tilt_down")}
-                        onTouchEnd={() => sendCommand("tilt_stop")}
-                        className="px-4 py-2 bg-green-500 text-white rounded m-2"
-                      >
-                        Tilt Down
-                      </button>
-                      <button
-                        onMouseDown={() => sendCommand("pan_left")}
-                        onMouseUp={() => sendCommand("pan_stop")}
-                        onTouchStart={() => sendCommand("pan_left")}
-                        onTouchEnd={() => sendCommand("pan_stop")}
-                        className="px-4 py-2 bg-purple-500 text-white rounded m-2"
-                      >
-                        Pan Left
-                      </button>
-                      <button
-                        onMouseDown={() => sendCommand("pan_right")}
-                        onMouseUp={() => sendCommand("pan_stop")}
-                        onTouchStart={() => sendCommand("pan_right")}
-                        onTouchEnd={() => sendCommand("pan_stop")}
-                        className="px-4 py-2 bg-purple-500 text-white rounded m-2"
-                      >
-                        Pan Right
-                      </button>
-                    </div>
-
-                    {/* Speed */}
-                    <div>
-                      <label>
-                        Servo Speed: <span>{speed}</span> ms
-                      </label>
-                      <input
-                        type="range"
-                        min="10"
-                        max="100"
-                        value={speed}
-                        onChange={(e) => {
-                          setSpeed(e.target.value);
-                          sendCommand("speed", e.target.value);
-                        }}
-                      />
-                    </div>
-                  </div>
-                  {/* Tilt Controls */}
-                  <div className="flex flex-col items-center">
-                    <h4 className="text-sm font-medium text-slate-600 mb-2">
-                      Tilt
-                    </h4>
-                    <div className="flex flex-col gap-2">
-                      <div
-                        className="bg-purple-600 hover:bg-purple-700 text-white rounded-lg py-3 px-4 flex items-center justify-center cursor-pointer transition-colors select-none"
-                        onMouseDown={() => handlePanTiltDown("tilt", "up")}
-                        onMouseUp={handlePanTiltUp}
-                        onTouchStart={() => handlePanTiltDown("tilt", "up")}
-                        onTouchEnd={handlePanTiltUp}
-                        title="Tilt Up"
-                      >
-                        <ArrowUp size={24} />
-                      </div>
-                      <div
-                        className="bg-purple-600 hover:bg-purple-700 text-white rounded-lg py-3 px-4 flex items-center justify-center cursor-pointer transition-colors select-none"
-                        onMouseDown={() => handlePanTiltDown("tilt", "down")}
-                        onMouseUp={handlePanTiltUp}
-                        onTouchStart={() => handlePanTiltDown("tilt", "down")}
-                        onTouchEnd={handlePanTiltUp}
-                        title="Tilt Down"
-                      >
-                        <ArrowDown size={24} />
-                      </div>
-                    </div>
-                    <div className="text-xs text-gray-500 mt-2">
-                      {tiltValue}°
-                    </div>
-                  </div>
-                  {/* Center/Home Button */}
-                  <div className="flex flex-col items-center justify-center">
-                    <button
-                      onClick={() => {
-                        sendPanTiltCommand("center", "home");
-                        setPanValue(90);
-                        setTiltValue(90);
-                      }}
-                      className="bg-gray-600 hover:bg-gray-700 text-white rounded-lg py-3 px-4 text-sm font-medium transition"
-                      title="Center Pan/Tilt"
-                    >
-                      🎯 Center
-                    </button>
-                  </div>
+                {/* Tilt Controls */}
+                <div className="mb-6">
+                  <h2 className="text-lg font-semibold mb-2">Tilt</h2>
+                  <button
+                    className="px-6 py-3 bg-blue-500 text-white rounded-2xl m-2 active:bg-blue-700"
+                    onMouseDown={() => sendCommandpantilt("tilt_up")}
+                    onMouseUp={() => sendCommandpantilt("tilt_stop")}
+                    onTouchStart={() => sendCommandpantilt("tilt_up")}
+                    onTouchEnd={() => sendCommandpantilt("tilt_stop")}
+                  >
+                    ⬆ Up
+                  </button>
+                  <button
+                    className="px-6 py-3 bg-blue-500 text-white rounded-2xl m-2 active:bg-blue-700"
+                    onMouseDown={() => sendCommandpantilt("tilt_down")}
+                    onMouseUp={() => sendCommandpantilt("tilt_stop")}
+                    onTouchStart={() => sendCommandpantilt("tilt_down")}
+                    onTouchEnd={() => sendCommandpantilt("tilt_stop")}
+                  >
+                    ⬇ Down
+                  </button>
                 </div>
 
-                <div className="mt-4 text-center">
-                  <p className="text-xs text-gray-500">
-                    Camera Pan/Tilt Servo Control
-                  </p>
+                {/* Pan Controls */}
+                <div className="mb-6">
+                  <h2 className="text-lg font-semibold mb-2">Pan</h2>
+                  <button
+                    className="px-6 py-3 bg-green-500 text-white rounded-2xl m-2 active:bg-green-700"
+                    onMouseDown={() => sendCommandpantilt("pan_left")}
+                    onMouseUp={() => sendCommandpantilt("pan_stop")}
+                    onTouchStart={() => sendCommandpantilt("pan_left")}
+                    onTouchEnd={() => sendCommandpantilt("pan_stop")}
+                  >
+                    ⬅ Left
+                  </button>
+                  <button
+                    className="px-6 py-3 bg-green-500 text-white rounded-2xl m-2 active:bg-green-700"
+                    onMouseDown={() => sendCommandpantilt("pan_right")}
+                    onMouseUp={() => sendCommandpantilt("pan_stop")}
+                    onTouchStart={() => sendCommandpantilt("pan_right")}
+                    onTouchEnd={() => sendCommandpantilt("pan_stop")}
+                  >
+                    ➡ Right
+                  </button>
+                </div>
+
+                {/* Speed Control */}
+                <div className="w-72">
+                  <label className="block mb-2 font-medium">
+                    Servo Speed: {speed} ms
+                  </label>
+                  <input
+                    type="range"
+                    min="10"
+                    max="100"
+                    value={speed}
+                    onChange={(e) => {
+                      setSpeed(e.target.value);
+                      sendCommandpantilt("speed", e.target.value);
+                    }}
+                    className="w-full"
+                  />
                 </div>
               </div>
 
