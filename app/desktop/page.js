@@ -4174,6 +4174,31 @@ export default function DesktopViewPage() {
     };
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.repeat) return; // prevent repeated firing when holding key
+      if (e.key === "h" || e.key === "H") {
+        sendActuatorCommand("stepper", "up");
+      } else if (e.key === "j" || e.key === "J") {
+        sendActuatorCommand("stepper", "down");
+      }
+    };
+
+    const handleKeyUp = (e) => {
+      if (e.key === "h" || e.key === "H" || e.key === "j" || e.key === "J") {
+        sendActuatorCommand("stepper", "stop");
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 px-4 py-6 font-sans text-slate-800">
       <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
@@ -4538,6 +4563,36 @@ export default function DesktopViewPage() {
                     }}
                     className="w-full"
                   />
+                </div>
+              </div>
+
+              {/* height control */}
+              <div className="bg-slate-50 p-4 rounded-xl border mt-4">
+                <h3 className="text-center font-semibold text-slate-700 mb-3">
+                  📐 Height Adjustment
+                </h3>
+                <div className="flex flex-col items-center gap-3">
+                  {/* UP Button */}
+                  <button
+                    onMouseDown={() => sendActuatorCommand("stepper", "up")}
+                    onMouseUp={() => sendActuatorCommand("stepper", "stop")}
+                    onTouchStart={() => sendActuatorCommand("stepper", "up")}
+                    onTouchEnd={() => sendActuatorCommand("stepper", "stop")}
+                    className="w-24 bg-blue-600 text-white text-lg rounded py-2 active:bg-blue-700"
+                  >
+                    ⬆ UP
+                  </button>
+
+                  {/* DOWN Button */}
+                  <button
+                    onMouseDown={() => sendActuatorCommand("stepper", "down")}
+                    onMouseUp={() => sendActuatorCommand("stepper", "stop")}
+                    onTouchStart={() => sendActuatorCommand("stepper", "down")}
+                    onTouchEnd={() => sendActuatorCommand("stepper", "stop")}
+                    className="w-24 bg-blue-600 text-white text-lg rounded py-2 active:bg-blue-700"
+                  >
+                    ⬇ DOWN
+                  </button>
                 </div>
               </div>
 
