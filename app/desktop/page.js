@@ -3784,6 +3784,44 @@ export default function DesktopViewPage() {
     }
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      switch (e.key) {
+        case "ArrowUp":
+          sendCommandpantilt("tilt_up");
+          break;
+        case "ArrowDown":
+          sendCommandpantilt("tilt_down");
+          break;
+        case "ArrowLeft":
+          sendCommandpantilt("pan_left");
+          break;
+        case "ArrowRight":
+          sendCommandpantilt("pan_right");
+          break;
+        default:
+          break;
+      }
+    };
+
+    const handleKeyUp = (e) => {
+      if (["ArrowUp", "ArrowDown"].includes(e.key)) {
+        sendCommandpantilt("tilt_stop");
+      }
+      if (["ArrowLeft", "ArrowRight"].includes(e.key)) {
+        sendCommandpantilt("pan_stop");
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, []);
+
   // WebSocket & Peer Connection
   const initConnection = async () => {
     const pc = new RTCPeerConnection();
