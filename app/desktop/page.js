@@ -4199,6 +4199,51 @@ export default function DesktopViewPage() {
     };
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.repeat) return; // avoid flooding
+
+      switch (e.key.toLowerCase()) {
+        case "w":
+          handleButtonDown("forward");
+          break;
+        case "s":
+          handleButtonDown("backward");
+          break;
+        case "a":
+          handleButtonDown("left");
+          break;
+        case "d":
+          handleButtonDown("right");
+          break;
+        case "r":
+          if (e.shiftKey) {
+            handleButtonDown("rLeft"); // Shift+R
+          } else {
+            handleButtonDown("rRight"); // R
+          }
+          break;
+        default:
+          break;
+      }
+    };
+
+    const handleKeyUp = (e) => {
+      // Only stop if one of our keys is released
+      if (["w", "s", "a", "d", "r"].includes(e.key.toLowerCase())) {
+        handleButtonUp();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 px-4 py-6 font-sans text-slate-800">
       <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
