@@ -4036,37 +4036,142 @@ export default function DesktopViewPage() {
   };
 
   // BodyPix tracking
+  // useEffect(() => {
+  //   let net, intervalId;
+  //   const trackMovement = async () => {
+  //     if (!videoRef.current || videoRef.current.readyState < 2 || !net) return;
+  //     const segmentation = await net.segmentPerson(videoRef.current);
+  //     const mask = bodyPix.toMask(segmentation);
+  //     const xCoords = [];
+  //     for (let y = 0; y < mask.height; y++) {
+  //       for (let x = 0; x < mask.width; x++) {
+  //         if (mask.data[(y * mask.width + x) * 4 + 3] > 0) xCoords.push(x);
+  //       }
+  //     }
+  //     if (xCoords.length > 0) {
+  //       const currentX = xCoords.reduce((a, b) => a + b) / xCoords.length;
+  //       if (previousX.current !== null) {
+  //         const dx = currentX - previousX.current;
+  //         setDirection(
+  //           dx > 10 ? "➡️ Right" : dx < -10 ? "⬅️ Left" : "⏹️ Centered"
+  //         );
+  //       }
+  //       previousX.current = currentX;
+  //     }
+  //   };
+
+  //   const load = async () => {
+  //     net = await bodyPix.load();
+  //     intervalId = setInterval(trackMovement, 500);
+  //   };
+  //   load();
+
+  //   return () => clearInterval(intervalId);
+  // }, []);
+
+  // Replace the existing BodyPix tracking useEffect with this modified version
+
   useEffect(() => {
     let net, intervalId;
+    let lastPanCommand = null; // Track the last pan command to avoid redundant calls
+
     const trackMovement = async () => {
       if (!videoRef.current || videoRef.current.readyState < 2 || !net) return;
-      const segmentation = await net.segmentPerson(videoRef.current);
-      const mask = bodyPix.toMask(segmentation);
-      const xCoords = [];
-      for (let y = 0; y < mask.height; y++) {
-        for (let x = 0; x < mask.width; x++) {
-          if (mask.data[(y * mask.width + x) * 4 + 3] > 0) xCoords.push(x);
+
+      try {
+        const segmentation = await net.segmentPerson(videoRef.current);
+        const mask = bodyPix.toMask(segmentation);
+        const xCoords = [];
+
+        // Extract x coordinates of detected person pixels
+        for (let y = 0; y < mask.height; y++) {
+          for (let x = 0; x < mask.width; x++) {
+            if (mask.data[(y * mask.width + x) * 4 + 3] > 0) xCoords.push(x);
+          }
         }
-      }
-      if (xCoords.length > 0) {
-        const currentX = xCoords.reduce((a, b) => a + b) / xCoords.length;
-        if (previousX.current !== null) {
-          const dx = currentX - previousX.current;
-          setDirection(
-            dx > 10 ? "➡️ Right" : dx < -10 ? "⬅️ Left" : "⏹️ Centered"
-          );
+
+        if (xCoords.length > 0) {
+          const currentX = xCoords.reduce((a, b) => a + b) / xCoords.length;
+          const centerX = mask.width / 2;
+          const threshold = mask.width * 0.15; // 15% of width as dead zone
+
+          if (previousX.current !== null) {
+            const dx = currentX - previousX.current;
+
+            // Determine direction and pan command
+            let newDirection = "⏹️ Centered";
+            let panCommand = null;
+
+            // Check if person is significantly off-center
+            if (currentX < centerX - threshold) {
+              newDirection = "⬅️ Left";
+              panCommand = "pan_left";
+            } else if (currentX > centerX + threshold) {
+              newDirection = "➡️ Right";
+              panCommand = "pan_right";
+            } else {
+              newDirection = "⏹️ Centered";
+              panCommand = "pan_stop";
+            }
+
+            setDirection(newDirection);
+
+            // Only send pan command if it's different from the last one
+            if (panCommand && panCommand !== lastPanCommand) {
+              console.log(
+                `Auto-pan: ${panCommand} (person at x: ${Math.round(
+                  currentX
+                )}, center: ${Math.round(centerX)})`
+              );
+
+              try {
+                await sendCommandpantilt(panCommand);
+                lastPanCommand = panCommand;
+              } catch (error) {
+                console.error("Auto-pan command failed:", error);
+              }
+            }
+          }
+
+          previousX.current = currentX;
+        } else {
+          // No person detected, stop panning if we were panning
+          if (lastPanCommand && lastPanCommand !== "pan_stop") {
+            console.log("Auto-pan: No person detected, stopping pan");
+            try {
+              await sendCommandpantilt("pan_stop");
+              lastPanCommand = "pan_stop";
+            } catch (error) {
+              console.error("Auto-pan stop command failed:", error);
+            }
+          }
+          setDirection("👤 No Person Detected");
         }
-        previousX.current = currentX;
+      } catch (error) {
+        console.error("BodyPix tracking error:", error);
       }
     };
 
     const load = async () => {
-      net = await bodyPix.load();
-      intervalId = setInterval(trackMovement, 500);
+      try {
+        console.log("Loading BodyPix model...");
+        net = await bodyPix.load();
+        console.log("BodyPix model loaded successfully");
+        intervalId = setInterval(trackMovement, 500); // Check every 500ms
+      } catch (error) {
+        console.error("Failed to load BodyPix model:", error);
+      }
     };
+
     load();
 
-    return () => clearInterval(intervalId);
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+      // Stop pan when component unmounts
+      if (lastPanCommand && lastPanCommand !== "pan_stop") {
+        sendCommandpantilt("pan_stop").catch(console.error);
+      }
+    };
   }, []);
 
   return (
@@ -4437,7 +4542,7 @@ export default function DesktopViewPage() {
               </div>
 
               {/* Obstacle Detection */}
-              <div className="bg-slate-50 p-4 rounded-xl border">
+              {/* <div className="bg-slate-50 p-4 rounded-xl border">
                 <h3 className="text-center font-semibold text-slate-700 mb-3">
                   🚨 Obstacle Detection
                 </h3>
@@ -4456,7 +4561,7 @@ export default function DesktopViewPage() {
                     </div>
                   ))}
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>
