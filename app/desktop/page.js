@@ -3728,7 +3728,12 @@ export default function DesktopViewPage() {
 
   const sendCommandpantilt = async (cmd, value = "") => {
     try {
-      await fetch(`${ESP32_IP}/cmd?cmd=${cmd}&value=${value}`);
+      await fetch(`${ESP32_IP}/cmd?cmd=${cmd}&value=${value}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      });
     } catch (err) {
       console.error("Error:", err);
     }
