@@ -3724,7 +3724,7 @@ export default function DesktopViewPage() {
   // const [speed, setSpeed] = useState(30);
 
   // Change to your ESP32 IP (check Serial Monitor)
-  const ESP32_IP = "http://172.25.249.192/";
+  const ESP32_IP = "http://172.25.249.192";
 
   const sendCommandpantilt = async (cmd, value = "") => {
     try {
